@@ -1,4 +1,16 @@
-# Lightweight React Template for KAVIA
+# HunterX Security Suite
+
+> **Electron + React (Burp Suite-style Offensive Security Platform)**
+
+**Quickstart (Electron Desktop):**
+```sh
+npm install
+npm run start       # launches React and Electron together
+npm run dist        # build Desktop App (see /dist for binaries)
+npm run electron-dev # (after npm run build) runs Electron on built frontend
+```
+
+---
 
 This project provides a minimal React template with a clean, modern UI and minimal dependencies.
 
