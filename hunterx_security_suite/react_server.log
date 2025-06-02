@@ -533,3 +533,61 @@ src/components/ReconDashboard.js
   Line 439:7:  Parsing error: Identifier 'ReconGraph' has already been declared. (439:7)
 
 webpack compiled with 2 errors
+Compiling...
+Failed to compile.
+
+[eslint] 
+src/components/ReconDashboard.js
+Syntax error: Identifier 'ReconGraph' has already been declared. (439:7) (439:7)
+ERROR in ./src/components/ReconDashboard.js
+Module build failed (from ./node_modules/babel-loader/lib/index.js):
+SyntaxError: /home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/src/components/ReconDashboard.js: Identifier 'ReconGraph' has already been declared. (439:7)
+
+  437 | }
+  438 |
+> 439 | import ReconGraph from "./ReconGraph";
+      |        ^
+  440 | import { exportCSV, exportJSON } from "./ExportUtils";
+  441 |
+  442 | // --- Local helpers and UI: Table, Graph, Export, Filter ---
+    at constructor (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:360:19)
+    at FlowParserMixin.raise (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:3327:19)
+    at FlowScopeHandler.checkRedeclarationInScope (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:1555:19)
+    at FlowScopeHandler.declareName (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:1521:12)
+    at FlowScopeHandler.declareName (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:1622:11)
+    at FlowParserMixin.declareNameFromIdentifier (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:7476:16)
+    at FlowParserMixin.checkIdentifier (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:7472:12)
+    at FlowParserMixin.checkLVal (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:7413:12)
+    at FlowParserMixin.finishImportSpecifier (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:13898:10)
+    at FlowParserMixin.parseImportSpecifierLocal (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:5605:31)
+    at FlowParserMixin.maybeParseDefaultImportSpecifier (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:14001:12)
+    at FlowParserMixin.parseImportSpecifiersAndAfter (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:13872:29)
+    at FlowParserMixin.parseImport (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:13868:17)
+    at FlowParserMixin.parseStatementContent (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:12514:27)
+    at FlowParserMixin.parseStatementLike (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:12406:17)
+    at FlowParserMixin.parseStatementLike (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:5140:24)
+    at FlowParserMixin.parseModuleItem (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:12383:17)
+    at FlowParserMixin.parseBlockOrModuleBlockBody (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:12960:36)
+    at FlowParserMixin.parseBlockBody (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:12953:10)
+    at FlowParserMixin.parseProgram (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:12280:10)
+    at FlowParserMixin.parseTopLevel (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:12270:25)
+    at FlowParserMixin.parseTopLevel (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:5909:28)
+    at FlowParserMixin.parse (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:14120:10)
+    at parse (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/parser/lib/index.js:14154:38)
+    at parser (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/core/lib/parser/index.js:41:34)
+    at parser.next (<anonymous>)
+    at normalizeFile (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/core/lib/transformation/normalize-file.js:64:37)
+    at normalizeFile.next (<anonymous>)
+    at run (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/core/lib/transformation/index.js:22:50)
+    at run.next (<anonymous>)
+    at transform (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/@babel/core/lib/transform.js:22:33)
+    at transform.next (<anonymous>)
+    at step (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/gensync/index.js:261:32)
+    at /home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/gensync/index.js:273:13
+    at async.call.result.err.err (/home/kavia/workspace/code-generation/hunterx-security-suite-16216-30b61d77/hunterx_security_suite/node_modules/gensync/index.js:223:11)
+
+ERROR in [eslint] 
+src/components/ReconDashboard.js
+  Line 439:7:  Parsing error: Identifier 'ReconGraph' has already been declared. (439:7)
+
+webpack compiled with 2 errors

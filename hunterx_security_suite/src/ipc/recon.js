@@ -20,6 +20,11 @@ const RECON_CHANNELS = {
  *   - cancelScan(scanId): Cancels scan by id.
  *   - onScanProgress(callback): Subscribe to progress events, call callback(data).
  *   - onScanResult(callback): Subscribe to scan result/exit, call callback(data).
+ *   - cacheScanResult({target, tool, parameters, output}): Store scan in DB.
+ *   - fetchScanHistory(limit): Get sidebar history.
+ *   - fetchScanSession(id): Retrieve previous result by ID.
+ *   - exportScanSessions(format): Export as JSON or CSV.
+ *   - importScanSessions(jsonData): Import from JSON.
  */
 // PUBLIC_INTERFACE
 contextBridge.exposeInMainWorld('reconAPI', {
@@ -42,5 +47,21 @@ contextBridge.exposeInMainWorld('reconAPI', {
   onScanResult: (callback) => {
     ipcRenderer.on(RECON_CHANNELS.SCAN_RESULT, (event, data) => callback(data));
     return () => ipcRenderer.removeAllListeners(RECON_CHANNELS.SCAN_RESULT);
-  }
+  },
+
+  // PUBLIC_INTERFACE
+  cacheScanResult: ({ target, tool, parameters, output }) =>
+    ipcRenderer.invoke(RECON_CHANNELS.DB_CACHE_RESULT, { target, tool, parameters, output }),
+
+  fetchScanHistory: (limit = 100) =>
+    ipcRenderer.invoke(RECON_CHANNELS.DB_GET_HISTORY, { limit }),
+
+  fetchScanSession: (id) =>
+    ipcRenderer.invoke(RECON_CHANNELS.DB_GET_RESULT, { id }),
+
+  exportScanSessions: (format = 'json') =>
+    ipcRenderer.invoke(RECON_CHANNELS.DB_EXPORT, { format }),
+
+  importScanSessions: (jsonData) =>
+    ipcRenderer.invoke(RECON_CHANNELS.DB_IMPORT, { jsonData })
 });
