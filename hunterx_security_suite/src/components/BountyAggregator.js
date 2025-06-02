@@ -1,437 +1,641 @@
-import React, { createContext, useContext, useReducer, useMemo } from "react";
+import React, { createContext, useContext, useState, useMemo } from "react";
+// Custom CSS for Bounty Aggregator (inlined for now; can separate if grows)
+const SIDEBAR_WIDTH = 280;
 
-/**
- * Initial state for the Bug Bounty Aggregator context.
- */
-const initialBountyState = {
-  search: "",
-  maxBounty: "",
-  scopeType: "all", // "all" | "web" | "mobile" | "api"
-  programs: [], // List of bounty programs (populated later)
-  savedScopes: [],
-};
+// Sample placeholder bug bounty program data
+const demoPrograms = [
+  {
+    id: "bbp-1",
+    name: "Acme Corp",
+    platform: "HackerOne",
+    maxBounty: 5000,
+    minBounty: 100,
+    scopeTypes: ["web", "api"],
+    isPublic: true,
+    url: "https://hackerone.com/acme",
+    description: "Acme Corp offers bounties for web, API bugs. US-based retailer. Multiple domains in scope.",
+    logo: "https://logo.clearbit.com/acme.com",
+  },
+  {
+    id: "bbp-2",
+    name: "Globex Mobile",
+    platform: "Bugcrowd",
+    maxBounty: 20000,
+    minBounty: 500,
+    scopeTypes: ["mobile", "api"],
+    isPublic: true,
+    url: "https://bugcrowd.com/globex",
+    description: "Globex pays top bounties for mobile and API vulnerabilities. Mobile apps (iOS/Android) in scope.",
+    logo: "https://logo.clearbit.com/globex.com",
+  },
+  {
+    id: "bbp-3",
+    name: "Wayne Enterprises",
+    platform: "HackerOne",
+    maxBounty: 1500,
+    minBounty: 0,
+    scopeTypes: ["web"],
+    isPublic: false,
+    url: "https://hackerone.com/wayne",
+    description: "Private program for invited researchers. Web only. Bounty payment may require NDA.",
+    logo: "https://logo.clearbit.com/wayneenterprises.com",
+  },
+];
 
-/**
- * Reducer for the Bug Bounty Aggregator state.
- */
-function bountyReducer(state, action) {
-  switch (action.type) {
-    case "SET_SEARCH":
-      return { ...state, search: action.value };
-    case "SET_MAX_BOUNTY":
-      return { ...state, maxBounty: action.value };
-    case "SET_SCOPE_TYPE":
-      return { ...state, scopeType: action.value };
-    case "SET_PROGRAMS":
-      return { ...state, programs: action.value };
-    case "SAVE_SCOPE":
-      // Placeholder logic: in real integration, this will update SQLite/local cache.
-      return { ...state, savedScopes: [...state.savedScopes, action.programId] };
-    default:
-      return state;
-  }
-}
-
-// PUBLIC_INTERFACE
+// ----------------------
+// Context definition
+// ----------------------
 const BountyAggregatorContext = createContext();
 
-/**
- * PUBLIC_INTERFACE
- * AggregatorProvider: Wrap parts of app to expose bounty aggregator context.
- */
+// PUBLIC_INTERFACE
+export function useBountyAggregator() {
+  return useContext(BountyAggregatorContext);
+}
+
+// Provider wrapper for state/future backend
+// PUBLIC_INTERFACE
 export function BountyAggregatorProvider({ children }) {
-  const [state, dispatch] = useReducer(bountyReducer, initialBountyState);
-  const contextValue = useMemo(() => ({ state, dispatch }), [state, dispatch]);
+  // In production, hook to API/cache flow with useEffect, here simple placeholders
+  const [filter, setFilter] = useState({
+    min: 0,
+    max: 20000,
+    scopeTypes: {
+      web: true,
+      mobile: true,
+      api: true,
+    },
+    search: "",
+  });
+
+  // Placeholder - for integrating with recon module cache
+  const saveToRecon = (program) => {
+    alert("Saved to Recon (stub):\n\n" + program.name);
+  };
+
+  // Filter programs by sidebar UI state
+  const filteredPrograms = useMemo(() => {
+    return demoPrograms.filter((p) => {
+      const { min, max, scopeTypes, search } = filter;
+      if (p.maxBounty < min || (max && p.minBounty > max)) return false;
+      const typeMatches = p.scopeTypes.some((t) => scopeTypes[t]);
+      if (!typeMatches) return false;
+      if (
+        search &&
+        !p.name.toLowerCase().includes(search.toLowerCase()) &&
+        !p.description.toLowerCase().includes(search.toLowerCase())
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [filter]);
+
+  // Context value
+  const value = { filter, setFilter, filteredPrograms, saveToRecon };
   return (
-    <BountyAggregatorContext.Provider value={contextValue}>
+    <BountyAggregatorContext.Provider value={value}>
       {children}
     </BountyAggregatorContext.Provider>
   );
 }
 
-/**
- * PUBLIC_INTERFACE
- * Hook for accessing the aggregator state/actions.
- */
-export function useBountyAggregator() {
-  return useContext(BountyAggregatorContext);
-}
+// ----------------------
+// Sidebar filter controls
+// ----------------------
+function BountySidebar() {
+  const { filter, setFilter } = useBountyAggregator();
+  const scopeTypes = filter.scopeTypes;
 
-// =======================
-// UI Helper components
-// =======================
+  // Update helpers
+  const handleBountyChange = (type, val) => {
+    setFilter((f) => ({ ...f, [type]: Number(val) }));
+  };
 
-/**
- * Sidebar filter/search controls for the aggregator.
- */
-function AggregatorSidebar() {
-  const { state, dispatch } = useBountyAggregator();
+  const handleScopeChange = (scope) => {
+    setFilter((f) => ({
+      ...f,
+      scopeTypes: { ...f.scopeTypes, [scope]: !f.scopeTypes[scope] },
+    }));
+  };
+
+  const handleSearchChange = (e) => {
+    setFilter((f) => ({ ...f, search: e.target.value }));
+  };
+
   return (
     <aside
-      className="hx-bounty-sidebar"
-      aria-label="Bug Bounty Filters"
+      className="bbag-sidebar"
       style={{
-        minWidth: 230,
-        maxWidth: 290,
-        padding: "22px 18px 18px 8px",
-        background: "var(--secondary)",
-        borderRadius: "10px",
-        border: "2px solid var(--tab-border)",
-        marginRight: 32,
-        height: "fit-content",
+        flex: `0 0 ${SIDEBAR_WIDTH}px`,
+        minWidth: SIDEBAR_WIDTH,
+        maxWidth: SIDEBAR_WIDTH,
+        background: "var(--panel-bg)",
+        borderRight: "2px solid var(--tab-border)",
+        padding: "32px 21px 22px 28px",
         color: "var(--on-primary)",
-        boxShadow: "0 1.5px 12px 0 #160e2460",
         display: "flex",
         flexDirection: "column",
-        gap: 24,
+        gap: 26,
+        fontSize: 16,
+        fontFamily: "inherit",
+        height: "100%",
+        boxShadow: "4px 0 18px 0 #0a0b136f"
       }}
+      aria-label="Program Filters"
     >
       <div>
-        <label htmlFor="aggregator-search" style={{ fontWeight: 600, color: "var(--accent)" }}>
-          Program Search
+        <div
+          style={{
+            color: "var(--accent)",
+            fontWeight: 700,
+            fontSize: "1.18em",
+            letterSpacing: "0.02em",
+            marginBottom: 8,
+            display: "flex",
+            gap: 11,
+            alignItems: "center"
+          }}
+        >
+          <span role="img" aria-label="filters">
+            🧰
+          </span>
+          Program Filters
+        </div>
+        <div
+          style={{
+            color: "#d6ddfc",
+            fontSize: 13.5,
+            opacity: 0.85,
+            marginBottom: 12,
+          }}
+        >
+          Narrow program list by scope, bounty, or keyword.
+        </div>
+      </div>
+      {/* Bounty Range */}
+      <div>
+        <label htmlFor="bounty-min" style={{ fontWeight: 500 }}>
+          Bounty Min ($)
         </label>
         <input
-          id="aggregator-search"
+          id="bounty-min"
+          type="number"
+          min={0}
+          max={filter.max}
+          value={filter.min}
+          onChange={(e) => handleBountyChange("min", e.target.value)}
+          style={inputStyle}
+          aria-label="Minimum Bounty"
+        />
+        <label htmlFor="bounty-max" style={{ fontWeight: 500, marginTop: 7 }}>
+          Max ($)
+        </label>
+        <input
+          id="bounty-max"
+          type="number"
+          min={filter.min}
+          max={50000}
+          value={filter.max}
+          onChange={(e) => handleBountyChange("max", e.target.value)}
+          style={inputStyle}
+          aria-label="Maximum Bounty"
+        />
+        <input
+          type="range"
+          min={0}
+          max={50000}
+          step={100}
+          value={filter.min}
+          onChange={(e) => handleBountyChange("min", e.target.value)}
+          style={sliderStyle}
+          aria-label="Bounty minimum slider"
+        />
+        <input
+          type="range"
+          min={0}
+          max={50000}
+          step={100}
+          value={filter.max}
+          onChange={(e) => handleBountyChange("max", e.target.value)}
+          style={{ ...sliderStyle, marginTop: 6 }}
+          aria-label="Bounty maximum slider"
+        />
+      </div>
+      {/* Scope toggles */}
+      <div>
+        <div style={{ fontWeight: 500, marginBottom: 5 }}>Scope Type</div>
+        <div style={scopeRowStyle}>
+          <ScopeToggle
+            scope="web"
+            label="Web"
+            checked={scopeTypes.web}
+            onChange={() => handleScopeChange("web")}
+            color="#ffe38d"
+          />
+          <ScopeToggle
+            scope="mobile"
+            label="Mobile"
+            checked={scopeTypes.mobile}
+            onChange={() => handleScopeChange("mobile")}
+            color="#99e0fd"
+          />
+          <ScopeToggle
+            scope="api"
+            label="API"
+            checked={scopeTypes.api}
+            onChange={() => handleScopeChange("api")}
+            color="#fbaaaa"
+          />
+        </div>
+      </div>
+      {/* Search control */}
+      <div style={{ marginTop: 4 }}>
+        <label htmlFor="search-prog" style={{ fontWeight: 500 }}>
+          Search
+        </label>
+        <input
+          id="search-prog"
           type="search"
-          value={state.search}
-          onChange={e => dispatch({ type: "SET_SEARCH", value: e.target.value })}
-          placeholder="Search by name, domain, etc..."
-          style={{
-            width: "100%",
-            padding: "8px 10px",
-            marginTop: 6,
-            borderRadius: 6,
-            border: "1.5px solid var(--tab-border)",
-            background: "#161622",
-            color: "#fafaff"
-          }}
+          value={filter.search}
+          onChange={handleSearchChange}
+          placeholder="Program name, keyword..."
+          style={inputStyle}
           aria-label="Search programs"
         />
       </div>
-      <div>
-        <label htmlFor="max-bounty" style={{ fontWeight: 600, color: "var(--accent)" }}>Max Bounty ($)</label>
-        <input
-          id="max-bounty"
-          type="number"
-          inputMode="numeric"
-          min={0}
-          step={100}
-          placeholder="No limit"
-          aria-label="Maximum bounty filter"
-          value={state.maxBounty}
-          onChange={e => dispatch({ type: "SET_MAX_BOUNTY", value: e.target.value.replace(/\D/, "") })}
-          style={{
-            width: "100%",
-            marginTop: 6,
-            padding: "8px 10px",
-            borderRadius: 6,
-            border: "1.5px solid var(--tab-border)",
-            background: "#161622",
-            color: "#fafaff"
-          }}
-        />
-      </div>
-      <div>
-        <div style={{ fontWeight: 600, color: "var(--accent)", marginBottom: 7 }}>
-          Scope Type
-        </div>
-        <div role="group" aria-label="Scope type filter" style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-          <label>
-            <input
-              type="radio"
-              checked={state.scopeType === "all"}
-              onChange={() => dispatch({ type: "SET_SCOPE_TYPE", value: "all" })}
-              name="scope-type"
-              style={{ marginRight: 9 }}
-            />
-            All
-          </label>
-          <label>
-            <input
-              type="radio"
-              checked={state.scopeType === "web"}
-              onChange={() => dispatch({ type: "SET_SCOPE_TYPE", value: "web" })}
-              name="scope-type"
-              style={{ marginRight: 9 }}
-            />
-            Web Apps
-          </label>
-          <label>
-            <input
-              type="radio"
-              checked={state.scopeType === "mobile"}
-              onChange={() => dispatch({ type: "SET_SCOPE_TYPE", value: "mobile" })}
-              name="scope-type"
-              style={{ marginRight: 9 }}
-            />
-            Mobile Apps
-          </label>
-          <label>
-            <input
-              type="radio"
-              checked={state.scopeType === "api"}
-              onChange={() => dispatch({ type: "SET_SCOPE_TYPE", value: "api" })}
-              name="scope-type"
-              style={{ marginRight: 9 }}
-            />
-            API/Backend
-          </label>
-        </div>
-      </div>
-      <div>
-        <small style={{ color: "#ffeeb0", opacity: 0.76 }}>
-          Filters update the grid below. More filter controls (platform, rewards, live/not) coming soon!
-        </small>
+      <div style={{ flex: 1 }} />
+      <div
+        aria-hidden="true"
+        style={{
+          color: "#bbb",
+          fontSize: 12,
+          textAlign: "right",
+          marginTop: 24,
+          opacity: 0.49,
+          letterSpacing: "0.03em",
+          fontStyle: "italic",
+        }}
+      >
+        Burp Suite-inspired UI
       </div>
     </aside>
   );
 }
 
-/**
- * Renders program bounty cards in a grid layout.
- * The styling is Burp/Burp Suite-inspired: flat, high-contrast, readable.
- * @param programs List of bug bounty program objects
- */
-function ProgramCardGrid({ programs, onSave, savedIds }) {
-  if (programs.length === 0) {
-    return (
-      <div style={{ color: "#b1b1c9", fontSize: "1.23em", marginTop: 47, textAlign: "center", width: "100%" }}>
-        <span style={{ fontSize: "2.3em", color: "#fde38d" }}>🪧</span>
-        <br />
-        No programs match your search/filter yet.
-        <div style={{ fontSize: "0.96em", marginTop: 14, color: "#c3c3ed" }}>
-          Try different keywords or filter settings.<br/>
-          <span style={{ color: "#ff8580" }}>API integration is coming soon!</span>
-        </div>
-      </div>
-    );
-  }
+function ScopeToggle({ scope, label, checked, onChange, color }) {
+  // Accessible custom toggle
+  return (
+    <label
+      htmlFor={`toggle-${scope}`}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 7,
+        borderRadius: 20,
+        padding: "6px 12px",
+        cursor: "pointer",
+        background: checked ? "#2d2d3b" : "transparent",
+        color: checked ? color : "#c1c0fd",
+        fontWeight: "bold",
+        fontSize: 15.5,
+        border: checked ? `1.4px solid ${color}` : "1.3px solid #39396e",
+        transition: "background .13s, border .12s",
+      }}
+      tabIndex={0}
+      aria-label={`Toggle scope ${label}`}
+    >
+      <input
+        id={`toggle-${scope}`}
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        style={{
+          accentColor: color,
+          marginRight: 3,
+          width: 20,
+          height: 20,
+        }}
+        aria-checked={checked}
+      />{" "}
+      {label}
+    </label>
+  );
+}
+
+const inputStyle = {
+  borderRadius: 7,
+  padding: "7px 14px",
+  fontSize: 16,
+  color: "#fffad9",
+  background: "#18192c",
+  border: "1.7px solid var(--tab-border)",
+  marginTop: 4,
+  marginBottom: 5,
+  width: "100%",
+  boxSizing: "border-box",
+  outline: "none",
+};
+
+const sliderStyle = {
+  width: "100%",
+  marginTop: 8,
+  accentColor: "var(--accent)",
+};
+
+const scopeRowStyle = {
+  display: "flex",
+  gap: 9,
+  marginTop: 5,
+  flexWrap: "wrap",
+};
+
+// -----------------------
+// Main card list area
+// -----------------------
+function BountyResultsArea() {
+  const { filteredPrograms, saveToRecon } = useBountyAggregator();
+
   return (
     <section
-      className="hx-bounty-card-grid"
-      aria-label="Bounty program results"
+      className="bbag-main-results"
       style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(321px, 1fr))",
-        gap: "24px",
-        marginTop: 8
+        flex: 1,
+        padding: "23px 30px 18px 30px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 21,
+        minWidth: 0,
+        minHeight: 350,
       }}
+      aria-label="Bug Bounty Programs"
     >
-      {programs.map((p, idx) =>
-        <article
-          key={p.id || p.name + idx}
-          className="hx-bounty-card"
-          tabIndex={0}
-          style={{
-            background: "var(--panel-bg)",
-            border: "2px solid var(--tab-border)",
-            borderRadius: "10px",
-            padding: "18px 22px 21px 19px",
-            boxShadow: "0 1px 8px 0 #1a1a2e88",
-            color: "var(--on-primary)",
-            fontSize: "1.04em",
-            minHeight: 162,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-            position: "relative"
-          }}
-        >
-          <header style={{ display: "flex", alignItems: "center", gap: 13, marginBottom: 3 }}>
-            <span
-              style={{
-                fontSize: "1.51em",
-                marginRight: 2,
-                color: "#fff8c9",
-                filter: "drop-shadow(0 0 4px #18183899)"
-              }}
-              aria-label="Bounty program icon"
-            >
-              {p.platform === "HackerOne" ? "💰" : p.platform === "Bugcrowd" ? "🦞" : p.platform === "Intigriti" ? "🦾" : "🔎"}
-            </span>
-            <span style={{ fontWeight: 600, color: "var(--accent)", fontSize: "1.18em" }}>{p.name}</span>
-            <span
-              style={{
-                marginLeft: "auto",
-                background: "#262845",
-                color: "#ffeeb0",
-                borderRadius: 8,
-                fontSize: "0.96em",
-                fontWeight: 700,
-                padding: "2.5px 9px",
-                border: "1.2px solid #ffeeb077"
-              }}
-            >
-              {p.platform || "Unknown"}
-            </span>
-          </header>
-          <div style={{ marginBottom: 7, lineHeight: 1.36, color: "#eaeaf3", fontWeight: 400 }}>
-            <span style={{ color: "#b6fad8", fontFamily: "monospace", fontWeight: 600 }}>{p.target || p.domain || p.asset || "—"}</span>
-            <br />
-            <span style={{ fontSize: "0.95em", color: "#ffeeb0a3" }}>
-              Scope: {String(p.scopeType || p.scope || "Not set")}
-            </span>
+      <div
+        style={{
+          fontWeight: 600,
+          fontSize: "1.33em",
+          color: "var(--accent)",
+          marginBottom: 7,
+          letterSpacing: "0.01em"
+        }}
+      >
+        <span role="img" aria-label="bounty-hunter" style={{marginRight:10}}>🎯</span>
+        Bug Bounty Program Aggregator
+      </div>
+      <div
+        style={{
+          color: "#d6e5fc",
+          fontWeight: 400,
+          fontSize: 15,
+          opacity: 0.86,
+          marginBottom: 5,
+          maxWidth: 650,
+        }}
+      >
+        View, filter, and save bug bounty program scopes for Recon. Supports web, API, and mobile bounty targets.
+      </div>
+      <div
+        style={{
+          display: "flex",
+          gap: 20,
+          flexWrap: "wrap",
+          alignItems: filteredPrograms.length ? "stretch" : "center",
+          marginTop: 9,
+        }}
+        aria-live="polite"
+      >
+        {filteredPrograms.length === 0 ? (
+          <div
+            style={{
+              color: "#fdc",
+              fontWeight: 500,
+              fontSize: 18,
+              opacity: 0.7,
+              marginTop: 23,
+              marginLeft: 6
+            }}
+            aria-live="polite"
+          >
+            No programs match filters.
           </div>
-          <div style={{ fontSize: "1.13em", color: "#ffac94", marginBottom: 4 }}>
-            Max Bounty: <b>${p.maxBounty ? Number(p.maxBounty).toLocaleString() : "?"}</b>
-          </div>
-          <footer style={{ marginTop: 9, display: "flex", gap: 10, alignItems: "center" }}>
-            <button
-              className="hx-bounty-save-btn"
-              onClick={() => onSave(p)}
-              disabled={savedIds.includes(p.id)}
-              aria-label="Save to Recon"
-              style={{
-                background: savedIds.includes(p.id) ? "#252544" : "var(--accent)",
-                color: savedIds.includes(p.id) ? "#ccc" : "#fff",
-                fontWeight: 600,
-                border: "none",
-                borderRadius: 6,
-                padding: "6px 16px",
-                marginRight: 8,
-                fontSize: "1.01em",
-                cursor: savedIds.includes(p.id) ? "not-allowed" : "pointer",
-                opacity: savedIds.includes(p.id) ? 0.7 : 1,
-                boxShadow: savedIds.includes(p.id) ? "none" : "0 0.5px 5px #43231330"
-              }}
-            >
-              {savedIds.includes(p.id) ? "Saved" : "Save to Recon"}
-            </button>
-            <span style={{ fontSize: "0.96em", color: "#ffeeb0" }}>Triage</span>
-            {/* Placeholder for actions */}
-            <span style={{ marginLeft: "auto", fontSize: 12, color: "#6868a6" }}>
-              {p.updatedAt ? "Updated: " + p.updatedAt : ""}
-            </span>
-          </footer>
-        </article>
-      )}
+        ) : (
+          filteredPrograms.map((program, idx) => (
+            <BountyProgramCard
+              key={program.id}
+              program={program}
+              onSave={() => saveToRecon(program)}
+            />
+          ))
+        )}
+      </div>
+      <div
+        style={{
+          color: "#9bc",
+          fontSize: 13,
+          marginTop: 41,
+          borderRadius: 6,
+          background: "#171728",
+          padding: "11.5px 19px",
+          opacity: 0.81,
+          fontStyle: "italic",
+          maxWidth: 420,
+        }}
+      >
+        Tip: Programs saved to Recon will appear in the dashboard for scope enforcement and targeting.
+      </div>
     </section>
   );
 }
 
-/**
- * Filter and prepare a mock list of programs for demonstration.
- * Future: Replace this with live API fetch and local cache logic.
- */
-function useFilteredPrograms() {
-  const { state } = useBountyAggregator();
-
-  // Hardcoded sample programs (for UI populating in absence of backend)
-  const samplePrograms = [
-    { id: "h1-1", name: "Yahoo", platform: "HackerOne", maxBounty: 50000, target: "yahoo.com", scopeType: "web", updatedAt: "2024-04-10" },
-    { id: "bc-1", name: "Tesla", platform: "Bugcrowd", maxBounty: 10000, target: "tesla.com", scopeType: "web", updatedAt: "2024-04-12" },
-    { id: "int-1", name: "Booking.com", platform: "Intigriti", maxBounty: 25000, target: "booking.com", scopeType: "web", updatedAt: "2024-04-04" },
-    { id: "h1-2", name: "Twitter", platform: "HackerOne", maxBounty: 4000, target: "twitter.com", scopeType: "api", updatedAt: "2024-04-08" },
-    { id: "h1-3", name: "Dropbox Mobile", platform: "HackerOne", maxBounty: 6000, target: "api.dropbox.com", scopeType: "mobile", updatedAt: "2024-04-02" },
-    { id: "bc-2", name: "Cloudflare", platform: "Bugcrowd", maxBounty: 3000, target: "cloudflare.com", scopeType: "web", updatedAt: "2024-03-28" },
-    { id: "int-2", name: "PayPal APIs", platform: "Intigriti", maxBounty: 12000, target: "api.paypal.com", scopeType: "api", updatedAt: "2024-04-01" },
-  ];
-  // Later: override/state.programs after live API connect
-
-  return useMemo(() => {
-    let arr = samplePrograms;
-    // Filter by search string
-    if (state.search)
-      arr = arr.filter(
-        prog =>
-          prog.name.toLowerCase().includes(state.search.toLowerCase()) ||
-          String(prog.target || prog.domain || prog.asset).toLowerCase().includes(state.search.toLowerCase())
-      );
-    // Filter by max bounty
-    if (state.maxBounty)
-      arr = arr.filter(prog =>
-        prog.maxBounty !== undefined && prog.maxBounty <= Number(state.maxBounty)
-      );
-    // Filter by scope type
-    if (state.scopeType !== "all")
-      arr = arr.filter(prog => String(prog.scopeType) === state.scopeType);
-    return arr;
-  }, [state.search, state.maxBounty, state.scopeType]);
-}
-
-// =============================
-// Main Bug Bounty Aggregator UI
-// =============================
-
-/**
- * PUBLIC_INTERFACE
- * The entry point: Bug Bounty Aggregator component for the tab panel.
- * Usage: Place in panel for "Bounty Aggregator" tab.
- */
-export default function BountyAggregator() {
-  // Compose/consume context
-  const { state, dispatch } = useBountyAggregator();
-  const programs = useFilteredPrograms();
-
-  // Save-to-recon handler (stub/placeholder for future backend/wireup)
-  function handleSave(program) {
-    // In real integration: Call Electron IPC or API to persist to SQLite/local cache
-    dispatch({ type: "SAVE_SCOPE", programId: program.id });
-    // Optionally show toast/notification
-  }
+function BountyProgramCard({ program, onSave }) {
+  // Card display: logo, program name, badge, bounties, scope chips, etc.
+  const { name, platform, maxBounty, minBounty, url, description, logo, scopeTypes, isPublic } =
+    program;
 
   return (
-    <section
-      className="hx-module-panel hx-bounty-panel"
-      data-module="bounty"
+    <div
+      className="bbag-program-card"
+      tabIndex={0}
       style={{
-        marginTop: 22,
-        minHeight: 420,
-        background: "var(--panel-bg)",
-        boxShadow: "0 2px 20px 0 #18182a86",
-        padding: "24px 24px 36px 24px",
-        borderRadius: "12px",
+        background: "#21233a",
+        border: "2px solid var(--tab-border)",
+        borderRadius: 11,
+        minWidth: 320,
+        maxWidth: 388,
+        minHeight: 176,
+        color: "#fff",
+        fontSize: 15.2,
+        boxShadow: "0 2px 17px 0 #1616315e",
+        padding: "20px 28px 22px 23px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 7,
+        position: "relative",
+        outline: "none",
+      }}
+      aria-label={name}
+      aria-describedby={`bbag-desc-${program.id}`}
+    >
+      <div style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 3 }}>
+        <img
+          src={logo}
+          alt={`${name} logo`}
+          style={{
+            width: 42,
+            height: 42,
+            borderRadius: "50%",
+            background: "#1A1A2E",
+            objectFit: "cover",
+            border: "2.2px solid #32325a",
+            marginRight: 2,
+          }}
+        />
+        <span style={{ fontWeight: 700, fontSize: 19 }}>{name}</span>
+        <span
+          style={{
+            background: platform === "HackerOne" ? "#371c26" : "#142444",
+            color: platform === "HackerOne" ? "#e94560" : "#97f0f0",
+            border: "1.1px solid #313362",
+            borderRadius: 7,
+            fontSize: 13,
+            fontWeight: 600,
+            padding: "4px 13px",
+            marginLeft: 6,
+          }}
+          aria-label="Platform"
+        >
+          {platform}
+        </span>
+        {!isPublic && (
+          <span style={{ marginLeft: 8, fontSize: 12.5, background: "#3a3166", color: "#e8acfb", borderRadius: 7, padding: "2px 9px", fontWeight: 400 }}>
+            Private
+          </span>
+        )}
+      </div>
+      <div style={{ color: "#ffa1c9", fontSize: 13.5, fontWeight: 500, marginBottom: 2 }}>
+        <span>
+          ${minBounty}-{maxBounty} bounty{" "}
+        </span>
+        <span
+          style={{
+            background: "#1d2645",
+            color: "#f7d97c",
+            borderRadius: 5,
+            fontWeight: 500,
+            fontSize: 13,
+            padding: "1.6px 12px",
+            marginLeft: 8,
+            marginRight: 3,
+          }}
+        >
+          In Scope:
+        </span>
+        {scopeTypes.map((type) => (
+          <span
+            key={type}
+            style={{
+              padding: "3px 11px",
+              borderRadius: 8,
+              marginRight: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              background:
+                type === "web"
+                  ? "#ffe78d44"
+                  : type === "mobile"
+                  ? "#a1e8ff45"
+                  : "#fbc6ba3a",
+              color:
+                type === "web"
+                  ? "#ffe78d"
+                  : type === "mobile"
+                  ? "#60e1ff"
+                  : "#ffbab6",
+              border:
+                type === "web"
+                  ? "1.1px solid #ffe46b"
+                  : type === "mobile"
+                  ? "1px solid #20caf3"
+                  : "1px solid #fa778e",
+            }}
+          >
+            {type.charAt(0).toUpperCase() + type.slice(1)}
+          </span>
+        ))}
+      </div>
+      <div id={`bbag-desc-${program.id}`} style={{ color: "#ddd", fontSize: 15, marginBottom: 3 }}>
+        {description}
+      </div>
+      <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: 3 }}>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            textDecoration: "underline",
+            color: "#8defff",
+            fontWeight: 500,
+            fontSize: 14.5,
+            marginRight: 10,
+          }}
+          aria-label={`Open bounty program for ${name} on ${platform}`}
+        >
+          View Program
+        </a>
+        <button
+          className="bbag-save-recon-btn"
+          style={saveBtnStyle}
+          onClick={onSave}
+          aria-label={`Save ${name} to Recon`}
+        >
+          + Save to Recon
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const saveBtnStyle = {
+  background: "var(--accent)",
+  color: "#fff",
+  borderRadius: 7,
+  border: "none",
+  fontWeight: 700,
+  fontSize: 15,
+  padding: "6px 18px",
+  marginLeft: 2,
+  cursor: "pointer",
+  outline: "none",
+  boxShadow: "0 1px 7px 0 #e9456029",
+  transition: "background .13s",
+};
+
+// ----------------------
+// Main Aggregator Component
+// ----------------------
+// PUBLIC_INTERFACE
+export default function BountyAggregator() {
+  return (
+    <div
+      className="bbag-aggregator-root"
+      style={{
         display: "flex",
         flexDirection: "row",
-        gap: 32,
-        alignItems: "flex-start"
+        minHeight: 440,
+        background: "var(--panel-bg)",
+        borderRadius: "var(--border-radius)",
+        boxShadow: "0 2.5px 20px 0 #231a2855",
+        marginTop: 12,
+        fontFamily: "inherit"
       }}
+      tabIndex={0}
+      aria-label="Bug Bounty Aggregator"
+      role="region"
     >
-      <AggregatorSidebar />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <h2
-          style={{
-            color: "var(--accent)",
-            fontWeight: 600,
-            fontSize: "1.35em",
-            margin: "0 0 3px 0",
-            display: "flex",
-            alignItems: "center",
-            gap: 10
-          }}
-        >
-          <span role="img" aria-label="bug bounty" style={{ fontSize: "1.45em", marginRight: 6 }}>
-            🪙
-          </span>
-          Bug Bounty Aggregator
-        </h2>
-        <p style={{ color: "#f2ecb0", margin: "2px 0 17px 0", fontSize: "1.09em" }}>
-          Discover, filter, and triage programs from major bug bounty platforms.
-          <span style={{ color: "#ffeeb0", fontWeight: 500, marginLeft: 11 }}>Burp Suite-inspired UI</span>.
-        </p>
-        <ProgramCardGrid
-          programs={programs}
-          onSave={handleSave}
-          savedIds={state.savedScopes}
-        />
-        <div
-          className="hx-bounty-tip"
-          tabIndex={0}
-          style={{
-            marginTop: 17,
-            background: "#22223d",
-            borderLeft: "5.5px solid var(--accent)",
-            borderRadius: 0,
-            fontSize: "1.01em",
-            padding: "13.5px 22px",
-            opacity: 0.92,
-            color: "#dfddea"
-          }}
-        >
-          <b>Tip:</b> Select "Save to Recon" to import program targets for automated asset discovery.
-          Platform syncing, scope change alerts, and offline caching coming soon.
-        </div>
+      <BountySidebar />
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+        <BountyResultsArea />
       </div>
-    </section>
+    </div>
   );
 }
+
