@@ -1,20 +1,56 @@
 {
-  "name": "react-kavia",
-  "version": "0.1.0",
+  "name": "hunterx-security-suite",
+  "version": "0.2.0",
   "private": true,
+  "description": "Offensive Security Desktop Suite — Electron + React with Burp Suite inspired UI.",
+  "main": "public/electron.js",
+  "author": "HunterX Team",
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "^5.0.1"
   },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "concurrently": "^7.6.0",
+    "electron": "^28.2.3",
+    "electron-builder": "^24.16.0"
+  },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "concurrently \"cross-env BROWSER=none react-scripts start\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron-dev": "electron .",
+    "react-start": "react-scripts start",
     "build": "react-scripts build",
+    "dist": "react-scripts build && electron-builder",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": "react-app"
+  },
+  "build": {
+    "appId": "com.hunterx.securitysuite",
+    "productName": "HunterX Security Suite",
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "files": [
+      "build/**/*",
+      "public/electron.js"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": ["dmg", "zip"]
+    },
+    "win": {
+      "target": ["nsis", "zip"]
+    },
+    "linux": {
+      "target": ["AppImage", "deb", "tar.gz"],
+      "category": "Utility"
+    },
+    "asar": true
   },
   "browserslist": {
     "production": [
@@ -27,8 +63,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "devDependencies": {
-    "cross-env": "^7.0.3"
   }
 }
