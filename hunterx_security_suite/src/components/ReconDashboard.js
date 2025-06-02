@@ -436,52 +436,6 @@ export function ReconDashboard(props) {
   );
 }
 
-import ReconGraph from "./ReconGraph";
-import { exportCSV, exportJSON } from "./ExportUtils";
-
-// --- Local helpers and UI: Table, Graph, Export, Filter ---
-
-// Table columns: customizable, sortable
-const reconColumns = [
-  { label: "#", field: "__num", sortable: false },
-  { label: "Asset", field: "asset_display", sortable: true },
-  { label: "Type", field: "assetType", sortable: true },
-  { label: "Status", field: "status", sortable: true },
-  { label: "Notes", field: "notes", sortable: false },
-];
-
-// Local state: sorting and filtering for the table
-function TableFilter({ filter, setFilter }) {
-  return (
-    <input
-      type="search"
-      className="hx-recon-input"
-      placeholder="Quick filter…"
-      value={filter}
-      onChange={e => setFilter(e.target.value)}
-      style={{
-        minWidth: 130,
-        maxWidth: "98%",
-        padding: "6px 13px",
-        fontSize: "0.99em"
-      }}
-      aria-label="Filter table rows"
-    />
-  );
-}
-export {
-  TableFilter
-};
-
-// Compose augmented rows for table processing and search; keep original source properties
-function processTableRows(rows) {
-  return rows.map((row, idx) => ({
-    ...row,
-    __num: idx + 1,
-    asset_display: row.asset || row.domain || row.ip || "—"
-  }));
-}
-
 // Extend main React component to use sorting/filtering state
 // Wrap the default export, preserving props/signature
 
@@ -537,7 +491,6 @@ function ReconDashboardEnhanced(props) {
         : -1;
     });
   }, [sortBy, sortDir, filteredRows]);
-  // Export only visible (sorted/filtered) table state
   // Extended logic for sorting columns when header clicked
   function handleSort(field) {
     if (sortBy === field) setSortDir(sortDir === "asc" ? "desc" : "asc");
@@ -558,7 +511,7 @@ function ReconDashboardEnhanced(props) {
       sortBy={sortBy}
       sortDir={sortDir}
       handleSort={handleSort}
-      reconColumns={reconColumns}
+      reconColumns={reconColumnsDefault}
     />
   );
 }
