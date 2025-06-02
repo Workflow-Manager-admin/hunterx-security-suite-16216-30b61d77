@@ -341,7 +341,7 @@ export function ReconDashboard(props) {
                 aria-label="Export as CSV"
                 tabIndex={0}
                 disabled={currentResults.length === 0}
-                onClick={() => exportCSV(filteredRows, reconColumns, "recon-results.csv")}
+                onClick={() => exportCSV(_filteredRows, _reconColumns, "recon-results.csv")}
                 style={{
                   marginRight: 8,
                   background: "var(--accent)",
@@ -361,7 +361,7 @@ export function ReconDashboard(props) {
                 aria-label="Export as JSON"
                 tabIndex={0}
                 disabled={currentResults.length === 0}
-                onClick={() => exportJSON(filteredRows, "recon-results.json")}
+                onClick={() => exportJSON(_filteredRows, "recon-results.json")}
                 style={{
                   background: "var(--panel-bg)",
                   color: "var(--accent)",
@@ -377,37 +377,37 @@ export function ReconDashboard(props) {
             </span>
           </div>
           <div style={{ marginBottom: 7, maxWidth: 390 }}>
-            <TableFilter filter={tableFilter} setFilter={setTableFilter} />
+            <TableFilter filter={_tableFilter} setFilter={_setTableFilter} />
           </div>
           <table className="hx-recon-table">
             <thead>
               <tr>
-                {reconColumns.map(col => (
+                {_reconColumns.map(col => (
                   <th
                     key={col.field}
                     role="columnheader"
-                    onClick={() => col.sortable && handleSort(col.field)}
+                    onClick={() => col.sortable && _handleSort(col.field)}
                     style={{ cursor: col.sortable ? "pointer" : "default", userSelect: "none" }}
-                    aria-sort={sortBy === col.field ? (sortDir === "asc" ? "ascending" : "descending") : undefined}
+                    aria-sort={_sortBy === col.field ? (_sortDir === "asc" ? "ascending" : "descending") : undefined}
                     tabIndex={col.sortable ? 0 : -1}
                   >
                     {col.label}
                     {col.sortable &&
-                      sortBy === col.field &&
-                      (sortDir === "asc" ? " ▲" : " ▼")}
+                      _sortBy === col.field &&
+                      (_sortDir === "asc" ? " ▲" : " ▼")}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filteredRows.length === 0 ? (
+              {_filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={reconColumns.length} style={{ textAlign: "center", opacity: 0.40 }}>
+                  <td colSpan={_reconColumns.length} style={{ textAlign: "center", opacity: 0.40 }}>
                     {isScanRunning ? "Listening for results..." : "Results will appear here as targets are discovered."}
                   </td>
                 </tr>
               ) : (
-                filteredRows.map((row, idx) => (
+                _filteredRows.map((row, idx) => (
                   <tr key={row.id || String(row.asset || row.domain || row.ip || idx)}>
                     <td>{idx + 1}</td>
                     <td style={{ fontFamily: "monospace", color: "#ffeeb0" }}>{row.asset || row.domain || row.ip || "—"}</td>
