@@ -198,8 +198,9 @@ function ScanTypeSelector({ selected, onChange }) {
  * PUBLIC_INTERFACE
  * Export the core ReconDashboard as a named export, not default.
  */
-export function ReconDashboard() {
+export function ReconDashboard(props) {
   const {
+    // Provided by context normally, but overridden by enhanced wrapper/component for augmented table state
     target, setTarget,
     scanType, setScanType,
     status,
@@ -209,7 +210,17 @@ export function ReconDashboard() {
     results,
     startScan,
     cancelScan,
-  } = useRecon();
+    // Table/graph state from enhanced version:
+    filteredRows,
+    tableFilter,
+    setTableFilter,
+    handleSort,
+    sortBy,
+    sortDir,
+    reconColumns,
+    sortedRows,
+    // fallback to avoid undefined variable errors
+  } = { ...useRecon(), ...props };
 
   const handleStartScan = () => startScan();
 
@@ -218,8 +229,16 @@ export function ReconDashboard() {
   const isDone = status === "finished";
   const isErrored = status === "error";
 
-  // Returns an array if results is array-like, else []
+  // Results array for display: supply controlled table view if present,
+  // else fallback to unenhanced/naive/all results array for direct use/testing
   const currentResults = Array.isArray(results) ? results : [];
+  const _filteredRows = filteredRows || processTableRows(currentResults);
+  const _tableFilter = typeof tableFilter === "string" ? tableFilter : "";
+  const _setTableFilter = setTableFilter || (() => {});
+  const _handleSort = handleSort || (() => {});
+  const _sortBy = sortBy || "";
+  const _sortDir = sortDir || "";
+  const _reconColumns = reconColumns || reconColumnsDefault;
 
   return (
     <section className="hx-module-panel hx-recon-panel" data-module="recon">
