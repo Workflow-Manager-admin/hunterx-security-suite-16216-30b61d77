@@ -313,3 +313,49 @@ src/components/ReconDashboard.js
   Line 505:  Parsing error: Only one default export allowed per module. (505:0)
 
 webpack compiled with 2 errors
+Compiling...
+Failed to compile.
+
+[eslint] 
+src/components/ReconDashboard.js
+  Line 285:42:  'filteredRows' is not defined             no-undef
+  Line 305:43:  'filteredRows' is not defined             no-undef
+  Line 321:34:  'tableFilter' is not defined              no-undef
+  Line 321:58:  'setTableFilter' is not defined           no-undef
+  Line 330:52:  'handleSort' is not defined               no-undef
+  Line 332:32:  'sortBy' is not defined                   no-undef
+  Line 332:56:  'sortDir' is not defined                  no-undef
+  Line 337:23:  'sortBy' is not defined                   no-undef
+  Line 338:24:  'sortDir' is not defined                  no-undef
+  Line 344:16:  'filteredRows' is not defined             no-undef
+  Line 351:17:  'filteredRows' is not defined             no-undef
+  Line 380:1:   Import in body of module; reorder to top  import/first
+  Line 381:1:   Import in body of module; reorder to top  import/first
+
+Search for the keywords to learn more about each error.
+WARNING in [eslint] 
+src/components/ReconDashboard.js
+  Line 166:5:   'isLoading' is assigned a value but never used  no-unused-vars
+  Line 285:32:  'exportCSV' was used before it was defined      no-use-before-define
+  Line 305:32:  'exportJSON' was used before it was defined     no-use-before-define
+  Line 440:8:   'rest' is assigned a value but never used       no-unused-vars
+
+ERROR in [eslint] 
+src/components/ReconDashboard.js
+  Line 285:42:  'filteredRows' is not defined             no-undef
+  Line 305:43:  'filteredRows' is not defined             no-undef
+  Line 321:34:  'tableFilter' is not defined              no-undef
+  Line 321:58:  'setTableFilter' is not defined           no-undef
+  Line 330:52:  'handleSort' is not defined               no-undef
+  Line 332:32:  'sortBy' is not defined                   no-undef
+  Line 332:56:  'sortDir' is not defined                  no-undef
+  Line 337:23:  'sortBy' is not defined                   no-undef
+  Line 338:24:  'sortDir' is not defined                  no-undef
+  Line 344:16:  'filteredRows' is not defined             no-undef
+  Line 351:17:  'filteredRows' is not defined             no-undef
+  Line 380:1:   Import in body of module; reorder to top  import/first
+  Line 381:1:   Import in body of module; reorder to top  import/first
+
+Search for the keywords to learn more about each error.
+
+webpack compiled with 1 error and 1 warning

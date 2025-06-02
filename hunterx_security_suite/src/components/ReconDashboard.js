@@ -154,8 +154,11 @@ function ScanTypeSelector({ selected, onChange }) {
  * Main ReconDashboard UI.
  * Wires up UI controls and live IPC output/progress via useRecon (context).
  */
-// PUBLIC_INTERFACE
-export default function ReconDashboard() {
+/**
+ * PUBLIC_INTERFACE
+ * Export the core ReconDashboard as a named export, not default.
+ */
+export function ReconDashboard() {
   const {
     target, setTarget,
     scanType, setScanType,
