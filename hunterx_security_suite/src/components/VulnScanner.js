@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
-// TODO: Import nuclei context once backend/IPC is wired
-// import { useNucleiScan } from "../context/NucleiScannerContext";
+import { useNucleiScan } from "../context/NucleiScannerContext";
 import { exportCSV, exportJSON } from "./ExportUtils";
 
 // Severities for Nuclei (color, label)
