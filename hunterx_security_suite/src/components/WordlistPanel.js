@@ -68,7 +68,7 @@ export default function WordlistPanel() {
         Wordlist Generator
       </h3>
       <p style={{ color: "#ecf6b3", marginTop: 6 }}>
-        Generate custom wordlists from intercepted JS/HTML assets. Uses TF-IDF/entropy (coming soon). Export the result for brute-force/fuzz modules.<br />
+        Generate custom wordlists from JS/HTML using in-browser TF-IDF ranking. Quickly create keyword lists for brute-force/fuzz modules.<br />
         <span style={{ color: "#fff6de" }}>
           All input stays local. Paste, upload, or drop files.</span>
       </p>
