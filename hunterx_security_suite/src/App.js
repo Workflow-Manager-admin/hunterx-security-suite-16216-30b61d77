@@ -35,13 +35,15 @@ function ModulePanel() {
           <p>Markdown/PDF export and report builder planned here.</p>
         </section>
       );
-    case "bounty":
+    case "bounty": {
+      // Use the new BountyAggregator component with provider wrapping
+      const { BountyAggregatorProvider, default: BountyAggregator } = require("./components/BountyAggregator");
       return (
-        <section className="hx-module-panel" data-module="bounty">
-          <h2>Bounty Aggregator</h2>
-          <p>Aggregated bug bounty program scopes, integrations (HackerOne/Bugcrowd)...</p>
-        </section>
+        <BountyAggregatorProvider>
+          <BountyAggregator />
+        </BountyAggregatorProvider>
       );
+    }
     case "plugins":
       return (
         <section className="hx-module-panel" data-module="plugins">
