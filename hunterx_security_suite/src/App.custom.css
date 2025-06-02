@@ -101,5 +101,117 @@
   }
 }
 
+/* PROXY REPLAY/EDITOR */
+.hx-request-editor-wrap {
+  background: #191b28;
+  border: 1.5px solid var(--tab-border);
+  box-shadow: 0 1px 6px 0 #141427b8;
+  border-radius: 8px;
+  margin-top: 20px;
+  margin-bottom: 9px;
+  padding: 18px 26px 14px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.hx-request-editor-label {
+  color: #fe9d70;
+  font-weight: 600;
+  font-size: 1.08em;
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
+.hx-request-editor-row {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.hx-request-input,
+.hx-request-textarea {
+  background: #14131e;
+  border: 1.3px solid #282851;
+  color: #f3f6ff;
+  font-family: monospace;
+  border-radius: 5px;
+  font-size: 1em;
+  padding: 8px 14px;
+  margin-right: 7px;
+  outline: none;
+  transition: border .14s;
+}
+.hx-request-input:focus,
+.hx-request-textarea:focus {
+  border-color: var(--accent);
+}
+.hx-request-textarea {
+  resize: vertical;
+  min-height: 53px;
+  max-height: 260px;
+  font-size: 1em;
+  padding: 9px 14px;
+}
+
+.hx-send-btn {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  padding: 9px 18px;
+  border-radius: 5px;
+  border: none;
+  font-size: 1.08em;
+  cursor: pointer;
+  margin-left: 0px;
+  transition: background .14s;
+  box-shadow: 0 1px 5px 0 #43231360;
+}
+.hx-send-btn:disabled {
+  background: #382829;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.hx-editor-resp-inline {
+  background: #291c19;
+  color: #eef0db;
+  border-radius: 8px;
+  padding: 11px 14px;
+  border: 1px solid #52294b;
+  margin-top: 4px;
+  font-family: "Fira Mono", monospace;
+  font-size: .97em;
+  overflow: auto;
+  max-height: 220px;
+}
+
+.hx-request-editor-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 6px;
+}
+
+.hx-request-editor-header .hx-replay-original-badge {
+  background: #2f2530;
+  color: #ffb495;
+  border-radius: 5px;
+  font-weight: 700;
+  font-size: 0.93em;
+  padding: 2px 13px;
+  border: 1.1px solid #8c396b;
+  margin-left: 6px;
+}
+.hx-request-editor-header .hx-replay-replayed-badge {
+  background: #1b4131;
+  color: #9ef7af;
+  border-radius: 5px;
+  font-weight: 700;
+  font-size: 0.93em;
+  padding: 2px 13px;
+  border: 1.1px solid #609c38;
+  margin-left: 6px;
+}
+
 /* Hide the default .app styles from the template */
 .app, .navbar, .container, .hero, .btn, .subtitle, .title, .description { display: none !important; }
