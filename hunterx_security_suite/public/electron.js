@@ -21,6 +21,9 @@ function createWindow() {
   // Setup IPC for nuclei template management.
   setupNucleiTemplateIpc(win);
 
+  // Setup IPC for bug bounty aggregator module.
+  setupBountyAggregatorIpc(win);
+
   // ...existing code...
   if (isDev) {
     win.webContents.openDevTools();
