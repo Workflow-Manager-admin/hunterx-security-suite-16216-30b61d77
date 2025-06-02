@@ -1,0 +1,105 @@
+.hx-app {
+  min-height: 100vh;
+  background: var(--primary);
+  color: var(--on-primary);
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-family);
+}
+
+/* Top bar (Burp Suite style) */
+.hx-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 30px;
+  height: 56px;
+  background: var(--secondary);
+  border-bottom: 2px solid var(--accent);
+  position: sticky;
+  z-index: 200;
+  top: 0;
+}
+
+.hx-topbar-logo {
+  display: flex;
+  align-items: center;
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.06em;
+}
+
+.hx-topbar-title {
+  color: var(--on-primary);
+  font-weight: 500;
+  font-size: 1.25rem;
+  margin-left: 8px;
+}
+
+.hx-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hx-topbar-action {
+  background: none;
+  border: none;
+  color: var(--on-primary);
+  padding: 2px 10px;
+  font-size: 22px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background .14s;
+}
+.hx-topbar-action:hover {
+  background: var(--window-control-hover);
+}
+
+.hx-main-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 32px 36px 0 36px;
+  background: var(--primary);
+}
+
+/* Module Panels */
+.hx-module-panel {
+  background: var(--panel-bg);
+  border-radius: var(--border-radius);
+  margin-top: 26px;
+  padding: 30px 32px;
+  min-height: 350px;
+  box-shadow: 0 2px 16px 0 #0b0b1360;
+  border: 2px solid var(--tab-border);
+  color: var(--on-primary);
+  font-size: var(--font-size-base);
+  transition: box-shadow 0.15s;
+}
+
+.hx-module-panel > h2 {
+  color: var(--accent);
+  font-size: var(--font-size-xl);
+  margin: 0 0 0.5em 0;
+  letter-spacing: 0.025em;
+}
+.hx-module-panel > p {
+  color: #ececec;
+  opacity: 0.92;
+  font-size: var(--font-size-lg);
+  margin: 2px 0 0 0;
+}
+
+@media (max-width: 700px) {
+  .hx-main-content {
+    padding: 16px 6px 0 6px;
+  }
+  .hx-module-panel {
+    padding: 16px 6px;
+  }
+}
+
+/* Hide the default .app styles from the template */
+.app, .navbar, .container, .hero, .btn, .subtitle, .title, .description { display: none !important; }
