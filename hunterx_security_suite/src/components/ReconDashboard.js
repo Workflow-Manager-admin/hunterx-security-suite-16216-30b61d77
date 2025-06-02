@@ -11,19 +11,111 @@ export function useRecon() {
   return useContext(ReconContext);
 }
 
-// PUBLIC_INTERFACE
+/**
+ * ReconProvider:
+ * State + backend scan wiring. Provides:
+ * - target, scanType: input
+ * - status: "idle" | "loading" | "progress" | "finished" | "error"
+ * - isLoading: scan loading state
+ * - error: error string or null
+ * - progress: current progress message/string
+ * - results: live, parsed array (table, graph)
+ * - startScan: function to initiate scan (calls IPC)
+ * - cancelScan: cancels scan
+ */
 export function ReconProvider({ children }) {
   const [target, setTarget] = useState("");
   const [scanType, setScanType] = useState(null); // "subdomains" | "ports" | "full"
-  // Placeholder for future: progress, results, status.
   const [status, setStatus] = useState("idle");
-  const [results, setResults] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [progress, setProgress] = useState(null);
+  const [results, setResults] = useState([]);  // [] of live result objects
+  const scanIdRef = useRef(null); // store running scan ID if needed for cancel
+
+  // Send scan start request to backend via IPC
+  const startScan = async () => {
+    setError(null);
+    setStatus("loading");
+    setIsLoading(true);
+    setProgress(null);
+    setResults([]);
+    try {
+      // Call Electron's contextBridge to start the scan
+      const res = await window.reconAPI.startReconScan(target, scanType);
+      // 'res' could be { scanId } (optional); store if needed for cancel
+      if (res && res.scanId) scanIdRef.current = res.scanId;
+      setStatus("progress");
+    } catch (e) {
+      setError("Failed to start scan: " + (e.message || "Unknown error"));
+      setStatus("error");
+      setIsLoading(false);
+    }
+  };
+
+  // Cancel
+  const cancelScan = () => {
+    if (scanIdRef.current)
+      window.reconAPI.cancelScan(scanIdRef.current);
+    setStatus("idle");
+    setIsLoading(false);
+    setError(null);
+    setProgress(null);
+    scanIdRef.current = null;
+  };
+
+  // Listen for scan progress (IPC, live stdout/stderr stream)
+  useEffect(() => {
+    // Subscribes once on mount
+    const unsubProgress = window.reconAPI.onScanProgress((data) => {
+      // data can be string or {progress, ...}
+      if (data.error) {
+        setStatus("error");
+        setError(data.error);
+        setIsLoading(false);
+      } else {
+        setProgress(data.progress || (typeof data === "string" ? data : null));
+        setStatus("progress");
+      }
+    });
+    // Listen for scan final results (scan done)
+    const unsubResult = window.reconAPI.onScanResult((data) => {
+      if (data.error) {
+        setStatus("error");
+        setError(data.error);
+        setIsLoading(false);
+        setProgress(null);
+        scanIdRef.current = null;
+      } else {
+        // Amass/Masscan: data.results is array/table. Support streaming updates.
+        if (Array.isArray(data.results)) {
+          setResults(prev => [...prev, ...data.results]);
+        } else if (data.result) {
+          setResults(prev => [...prev, data.result]);
+        }
+        setStatus("finished");
+        setProgress("Scan complete");
+        setIsLoading(false);
+        scanIdRef.current = null;
+      }
+    });
+    // Clean up event listeners on unmount
+    return () => {
+      unsubProgress && unsubProgress();
+      unsubResult && unsubResult();
+    };
+  }, []);
 
   const value = {
     target, setTarget,
     scanType, setScanType,
     status, setStatus,
+    isLoading,
+    error, setError,
+    progress, setProgress,
     results, setResults,
+    startScan,
+    cancelScan,
   };
 
   return (
