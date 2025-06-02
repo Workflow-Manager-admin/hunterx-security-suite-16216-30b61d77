@@ -610,3 +610,36 @@ src/components/ReconDashboard.js
   Line 453:8:  'rest' is assigned a value but never used        no-unused-vars
 
 webpack compiled with 1 warning
+Compiling...
+Compiled with warnings.
+
+[eslint] 
+src/components/ReconDashboard.js
+  Line 207:5:  'isLoading' is assigned a value but never used   no-unused-vars
+  Line 221:5:  'sortedRows' is assigned a value but never used  no-unused-vars
+  Line 453:8:  'rest' is assigned a value but never used        no-unused-vars
+
+src/components/VulnScanner.js
+  Line 18:37:  Unexpected empty object pattern                                                                              no-empty-pattern
+  Line 27:5:   'progress' is assigned a value but never used                                                                no-unused-vars
+  Line 28:12:  'setError' is assigned a value but never used                                                                no-unused-vars
+  Line 147:6:  React Hook useMemo has a missing dependency: 'SEVERITIES'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  Line 607:7:  'SAMPLE_FINDINGS' is assigned a value but never used                                                         no-unused-vars
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+WARNING in [eslint] 
+src/components/ReconDashboard.js
+  Line 207:5:  'isLoading' is assigned a value but never used   no-unused-vars
+  Line 221:5:  'sortedRows' is assigned a value but never used  no-unused-vars
+  Line 453:8:  'rest' is assigned a value but never used        no-unused-vars
+
+src/components/VulnScanner.js
+  Line 18:37:  Unexpected empty object pattern                                                                              no-empty-pattern
+  Line 27:5:   'progress' is assigned a value but never used                                                                no-unused-vars
+  Line 28:12:  'setError' is assigned a value but never used                                                                no-unused-vars
+  Line 147:6:  React Hook useMemo has a missing dependency: 'SEVERITIES'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  Line 607:7:  'SAMPLE_FINDINGS' is assigned a value but never used                                                         no-unused-vars
+
+webpack compiled with 1 warning

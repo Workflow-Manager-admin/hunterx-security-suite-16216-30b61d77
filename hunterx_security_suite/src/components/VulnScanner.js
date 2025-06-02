@@ -92,7 +92,7 @@ export default function VulnScanner({}) {
   // Process findings for table (add row number)
   const numberedFindings = useMemo(
     () =>
-      findings.map((f, idx) => ({
+      (Array.isArray(findings) ? findings : []).map((f, idx) => ({
         ...f,
         __num: idx + 1,
       })),

@@ -16,11 +16,13 @@ function ModulePanel() {
         </ReconProvider>
       );
     case "scanner":
+      // Lazy import to avoid circular import (if exists): safe for dev bundle
+      const { NucleiScannerProvider } = require("./context/NucleiScannerContext");
+      const VulnScanner = require("./components/VulnScanner").default;
       return (
-        <section className="hx-module-panel" data-module="scanner">
-          <h2>Vulnerability Scanner</h2>
-          <p>Nuclei & Template Manager UI goes here.</p>
-        </section>
+        <NucleiScannerProvider>
+          <VulnScanner />
+        </NucleiScannerProvider>
       );
     case "exploit":
       return (
