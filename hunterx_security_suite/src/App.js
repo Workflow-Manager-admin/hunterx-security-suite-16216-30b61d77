@@ -4,15 +4,16 @@ import "./styles/theme.css";
 import TabNavigation from "./components/TabNavigation";
 import { AppProvider, useAppState } from "./context/AppContext";
 
+import ReconDashboard, { ReconProvider } from "./components/ReconDashboard";
+
 function ModulePanel() {
   const { activeTab } = useAppState();
   switch (activeTab) {
     case "recon":
       return (
-        <section className="hx-module-panel" data-module="recon">
-          <h2>Recon</h2>
-          <p>Subdomain enumeration, port scan & visualization coming soon.</p>
-        </section>
+        <ReconProvider>
+          <ReconDashboard />
+        </ReconProvider>
       );
     case "scanner":
       return (
