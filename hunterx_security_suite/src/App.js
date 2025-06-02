@@ -25,12 +25,9 @@ function ModulePanel() {
         </NucleiScannerProvider>
       );
     case "exploit":
-      return (
-        <section className="hx-module-panel" data-module="exploit">
-          <h2>Exploitation Toolkit</h2>
-          <p>MITM proxy, JS Analyzer, and automation soon available.</p>
-        </section>
-      );
+      // Use the new ExploitToolkit for the Exploitation tab panel
+      const ExploitToolkit = require("./components/ExploitToolkit").default;
+      return <ExploitToolkit />;
     case "report":
       return (
         <section className="hx-module-panel" data-module="report">
