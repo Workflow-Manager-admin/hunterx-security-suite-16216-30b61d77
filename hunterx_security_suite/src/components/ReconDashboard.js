@@ -423,7 +423,10 @@ function processTableRows(rows) {
 // Extend main React component to use sorting/filtering state
 // Wrap the default export, preserving props/signature
 
-// Wrap the exported component
+/**
+ * Wrap the exported component.
+ * Only one default export allowed: export the enhanced version as default.
+ */
 const BaseReconDashboard = ReconDashboard;
 function ReconDashboardEnhanced(props) {
   const {
@@ -497,4 +500,7 @@ function ReconDashboardEnhanced(props) {
     />
   );
 }
+
+// Export the enhanced component as default, original as named only.
 export default ReconDashboardEnhanced;
+export { ReconDashboard as BaseReconDashboard };
