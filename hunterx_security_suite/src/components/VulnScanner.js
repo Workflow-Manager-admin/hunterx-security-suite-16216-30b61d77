@@ -738,7 +738,7 @@ export default function VulnScanner({}) {
           placeholder="Scan target (URL, domain or IP)"
           value={scanTarget}
           onChange={e => setScanTarget(e.target.value)}
-          disabled={isScanning}
+          disabled={isScanning || !isTplHealthy || nucleiTemplateStatusLoading || nucleiTemplateUpdatePending}
           aria-label="Scan target"
         />
         {/* Scan mode switcher */}
@@ -754,7 +754,7 @@ export default function VulnScanner({}) {
             }}
             value={scanMode}
             onChange={e => handleModeChange(e.target.value)}
-            disabled={isScanning}
+            disabled={isScanning || !isTplHealthy || nucleiTemplateStatusLoading || nucleiTemplateUpdatePending}
             aria-label="Scan mode"
           >
             <option value="quick">Quick</option>
@@ -763,11 +763,15 @@ export default function VulnScanner({}) {
         </Tooltip>
         <button
           className="hx-recon-btn hx-recon-btn-primary"
-          disabled={!scanTarget || isScanning}
-          style={{ minWidth: 92 }}
+          disabled={isScanDisabled}
+          style={{ minWidth: 92, opacity: isScanDisabled ? 0.67 : 1 }}
           onClick={handleStartScan}
         >
-          {isScanning ? "Scanning..." : "Start Scan"}
+          {isScanning
+            ? "Scanning..."
+            : tplClassifier.status === "outdated"
+            ? "Start Anyway"
+            : "Start Scan"}
         </button>
         {isScanning ? (
           <button
