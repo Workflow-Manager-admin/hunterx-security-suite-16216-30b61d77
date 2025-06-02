@@ -1486,3 +1486,40 @@ src/components/ExploitToolkit.js
   Line 1382:7:  Parsing error: Identifier 'WordlistPanel' has already been declared. (1382:7)
 
 webpack compiled with 2 errors and 1 warning
+Compiling...
+Failed to compile.
+
+[eslint] 
+src/components/ExploitToolkit.js
+  Line 220:38:  'ProxyPanel' is not defined      react/jsx-no-undef
+  Line 222:14:  'JSScanProvider' is not defined  react/jsx-no-undef
+  Line 223:16:  'DebuggerPanel' is not defined   react/jsx-no-undef
+
+Search for the keywords to learn more about each error.
+WARNING in [eslint] 
+src/components/ExploitToolkit.js
+  Line 18:10:  'useProxyIntercept' is defined but never used  no-unused-vars
+
+src/components/ReconDashboard.js
+  Line 207:5:  'isLoading' is assigned a value but never used   no-unused-vars
+  Line 221:5:  'sortedRows' is assigned a value but never used  no-unused-vars
+  Line 453:8:  'rest' is assigned a value but never used        no-unused-vars
+
+src/components/VulnScanner.js
+  Line 346:37:  Unexpected empty object pattern                           no-empty-pattern
+  Line 356:12:  'setError' is assigned a value but never used             no-unused-vars
+  Line 362:5:   'nucleiTemplateEvent' is assigned a value but never used  no-unused-vars
+  Line 368:5:   'autoRetryFlag' is assigned a value but never used        no-unused-vars
+
+src/components/WordlistContext.js
+  Line 33:36:  Unnecessary escape character: \-  no-useless-escape
+
+ERROR in [eslint] 
+src/components/ExploitToolkit.js
+  Line 220:38:  'ProxyPanel' is not defined      react/jsx-no-undef
+  Line 222:14:  'JSScanProvider' is not defined  react/jsx-no-undef
+  Line 223:16:  'DebuggerPanel' is not defined   react/jsx-no-undef
+
+Search for the keywords to learn more about each error.
+
+webpack compiled with 1 error and 1 warning
