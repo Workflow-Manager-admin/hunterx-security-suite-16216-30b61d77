@@ -4,7 +4,14 @@ const RECON_CHANNELS = {
   START_SCAN: 'recon:start_scan',
   SCAN_PROGRESS: 'recon:scan_progress',
   SCAN_RESULT: 'recon:scan_result',
-  CANCEL_SCAN: 'recon:cancel_scan'
+  CANCEL_SCAN: 'recon:cancel_scan',
+
+  // SQLite DB session cache/history/export IPC
+  DB_CACHE_RESULT: 'recon:db_cache_result',
+  DB_GET_HISTORY: 'recon:db_get_history',
+  DB_GET_RESULT: 'recon:db_get_result',
+  DB_EXPORT: 'recon:db_export',
+  DB_IMPORT: 'recon:db_import'
 };
 
 /**
