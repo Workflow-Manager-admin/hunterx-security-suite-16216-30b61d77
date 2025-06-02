@@ -4,21 +4,26 @@ const fs = require("fs");
 const path = require("path");
 
 /**
- * This file handles IPC and backend logic for:
- *   - Verifying Nuclei template existence and freshness
- *   - Executing template updates
- *   - Emitting events to renderer for status/errors
- *   - Robust error/success propagation via IPC
+ * IPC/backend module for robust management of Nuclei template status, updates, error and event propagation.
+ *
+ * Responsibilities:
+ *   - Validate template folder presence/structure for Nuclei scans
+ *   - Check staleness/outdated (mtime-based) and critical sub-folder integrity
+ *   - Trigger update (nuclei -update) with reliable stdout/stderr handling
+ *   - Emit "template_event" live progress and completion (including error) to renderer
+ *   - Propagate errors and status via resolve/reject and event, never swallow failures
+ *   - Provide direct status and update IPC handlers for renderer (preload) bridge
+ *
+ * Usage: Call setupNucleiTemplateIpc(mainWindow) from your Electron main process at startup.
  */
 
-// Location of Nuclei templates (default/local, or env override)
+// PUBLIC_INTERFACE
 function getNucleiTemplateDir() {
-  // Allow override via env for dev
-  if (process.env.NUCLEI_TEMPLATES)
-    return process.env.NUCLEI_TEMPLATES;
+  // Allow override via env for dev/test/CI
+  if (process.env.NUCLEI_TEMPLATES) return process.env.NUCLEI_TEMPLATES;
 
-  // Try common install locations; fallback to ~/.local/share/nuclei-templates
-  const home = process.env.HOME || process.env.USERPROFILE;
+  // Try multiple common install locations; fallback to ~/.local/share/nuclei-templates
+  const home = process.env.HOME || process.env.USERPROFILE || "";
   const local = path.join(home, ".local", "share", "nuclei-templates");
   const defaultDirs = [
     local,
@@ -31,7 +36,7 @@ function getNucleiTemplateDir() {
   return local;
 }
 
-// Check if templates folder (and key files) exist and are not empty
+// PUBLIC_INTERFACE
 function checkTemplatesStatus() {
   const tplDir = getNucleiTemplateDir();
   let exists = false, outdated = false, error = null, details = {};
@@ -40,18 +45,16 @@ function checkTemplatesStatus() {
     if (!exists) {
       error = "Nuclei templates not found. Please update/download templates.";
     } else {
-      // Check last update (by folder mtime)
+      // Check last update (by folder mtime); outdated = >8d
       const stat = fs.statSync(tplDir);
       const lastUpdate = stat.mtime;
       const now = new Date();
-      const daysOld = (now - lastUpdate) / (1000 * 60 * 60 * 24);
-      outdated = daysOld > 8; // more than 8 days triggers update prompt
+      const daysOld = (now - lastUpdate) / 86400000;
+      outdated = daysOld > 8;
       details.lastUpdate = lastUpdate;
       details.daysOld = daysOld;
-      if (outdated) {
-        error = "Nuclei templates may be outdated. Please update.";
-      }
-      // Also check for some critical category subfolders
+      if (outdated) error = "Nuclei templates may be outdated. Please update.";
+      // Check for critical subfolders (marks as error if missing any)
       const subdirs = ["cves", "fuzzing", "misconfiguration", "default-logins"];
       for (const sdir of subdirs) {
         if (!fs.existsSync(path.join(tplDir, sdir))) {
@@ -67,7 +70,7 @@ function checkTemplatesStatus() {
   return { exists, outdated, error, details, path: tplDir };
 }
 
-// Validate a template YAML path before a scan
+// PUBLIC_INTERFACE
 function validateTemplatePaths(paths = []) {
   const tplDir = getNucleiTemplateDir();
   const missing = [];
@@ -81,91 +84,122 @@ function validateTemplatePaths(paths = []) {
   };
 }
 
-// Run 'nuclei -update' and handle output, errors robustly.
-// Emits IPC events to renderer for status.
+/**
+ * PUBLIC_INTERFACE
+ * Run 'nuclei -update' and emit progress/events to renderer ("vulnscan:template_event").
+ *   - Ensures all events go to renderer for user visibility (progress, error, done).
+ *   - Handles process spawn errors and non-zero exit codes.
+ *   - Callback/Promise for direct update result, but always emits events for frontend.
+ * @param {BrowserWindow?} win Electron window to send IPC events (optional)
+ * @param {function} cb Callback to receive result ({success, updated, output, error})
+ */
 function runTemplateUpdate(win, cb) {
-  // Optionally: pass Electron's main window if you want to send live events
   let output = "";
-  let statusSent = false;
   const nucleiCmd = "nuclei";
   const args = ["-update"];
-  const proc = spawn(nucleiCmd, args);
+  let done = false;
+  let sendEvent = (payload) => {
+    if (win && win.webContents) {
+      win.webContents.send("vulnscan:template_event", payload);
+    }
+  };
+
+  let proc;
+  try {
+    proc = spawn(nucleiCmd, args);
+  } catch (e) {
+    done = true;
+    output += "\nSPAWN ERROR: " + (e.message || e.toString());
+    sendEvent({
+      type: "update-done",
+      success: false,
+      output,
+      error: "Failed to spawn nuclei: " + (e.message || e.toString())
+    });
+    if (cb) cb({
+      success: false, updated: false, output,
+      error: "Failed to spawn nuclei: " + (e.message || e.toString())
+    });
+    return;
+  }
 
   proc.stdout.on("data", (data) => {
     output += data.toString();
-    if (win)
-      win.webContents.send("vulnscan:template_event", {
-        type: "update-progress",
-        progress: data.toString()
-      });
+    sendEvent({ type: "update-progress", progress: data.toString() });
   });
   proc.stderr.on("data", (data) => {
     output += data.toString();
-    if (win)
-      win.webContents.send("vulnscan:template_event", {
-        type: "update-progress",
-        progress: data.toString()
-      });
+    sendEvent({ type: "update-progress", progress: data.toString() });
   });
   proc.on("close", (code) => {
+    if (done) return;
+    done = true;
     const success = code === 0;
-    if (win) {
-      win.webContents.send("vulnscan:template_event", {
-        type: "update-done",
-        success,
-        output,
-        error: success ? null : "Update failed: non-zero exit (" + code + ")"
-      });
-    }
-    if (cb) cb({
+    sendEvent({
+      type: "update-done",
       success,
-      updated: success,
       output,
       error: success ? null : "Update failed: non-zero exit (" + code + ")"
     });
-    statusSent = true;
+    if (cb)
+      cb({
+        success,
+        updated: success,
+        output,
+        error: success ? null : "Update failed: non-zero exit (" + code + ")"
+      });
   });
   proc.on("error", (err) => {
+    if (done) return;
+    done = true;
     output += "\nPROCESS ERROR: " + (err.message || err.toString());
-    if (win) {
-      win.webContents.send("vulnscan:template_event", {
-        type: "update-done",
-        success: false,
-        output,
-        error: "Nuclei template update process error: " + (err.message || err.toString())
-      });
-    }
-    if (cb) cb({
+    sendEvent({
+      type: "update-done",
       success: false,
       output,
-      error: "Nuclei update process error: " + (err.message || err.toString())
+      error: "Nuclei template update process error: " + (err.message || err.toString())
     });
-    statusSent = true;
+    if (cb)
+      cb({
+        success: false,
+        updated: false,
+        output,
+        error: "Nuclei update process error: " + (err.message || err.toString())
+      });
   });
-  // NOTE: No return value, results handled via cb/event
 }
 
-// Set up all IPC handlers: must call this from your Electron main process entry!
+// PUBLIC_INTERFACE
 function setupNucleiTemplateIpc(mainWindow) {
-  // Return current template status object
+  // Status query IPC (renderer <- main)
   ipcMain.handle("vulnscan:template_status", async (event) => {
-    return checkTemplatesStatus();
+    try {
+      return checkTemplatesStatus();
+    } catch (e) {
+      return {
+        exists: false, outdated: false,
+        error: "IPC: Failed to check template status: " + (e.message || e.toString()),
+        details: {}, path: getNucleiTemplateDir()
+      };
+    }
   });
 
-  // Trigger an update check/update, return result (do not block main)
+  // Trigger manual update IPC with event relay
   ipcMain.handle("vulnscan:template_update", async (event) => {
     return new Promise((resolve) => {
       runTemplateUpdate(mainWindow, (result) => {
-        // After update, check status again
+        // After update attempt, recheck status so UI reflects new state
         const status = checkTemplatesStatus();
         resolve({ ...result, templateStatus: status });
       });
     });
   });
 
-  // Validate template paths explicitly if needed - not exposed via IPC by default
+  // Note: No default event-broadcast handler needed – runTemplateUpdate emits to "vulnscan:template_event" as child progresses
+  // If needed in future, add IPC event relay here
 }
 
+// PUBLIC_INTERFACE - Module exports for main process use and tests
 module.exports = {
   checkTemplatesStatus,
   validateTemplatePaths,
@@ -173,4 +207,3 @@ module.exports = {
   setupNucleiTemplateIpc,
   getNucleiTemplateDir
 };
-
