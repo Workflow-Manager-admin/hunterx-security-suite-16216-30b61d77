@@ -11,26 +11,26 @@ const SEVERITY_COLORS = {
   info: "#cdcbff",
 };
 
-// PUBLIC_INTERFACE
+/**
+ * PUBLIC_INTERFACE
+ * VulnScanner: expects to be used within NucleiScannerProvider (which provides useNucleiScan state).
+ */
 export default function VulnScanner({}) {
-  // === State/Placeholder Integration ===
-  // Use context/hook for future IPC/scanner state
-  // const { scan, setScanTarget, scanStatus, filters, findings, ... } = useNucleiScan();
-  // For now, use placeholder/local state
+  // Use NucleiScannerContext for all scan state & actions
+  const {
+    scanTarget, setScanTarget,
+    scanMode, setScanMode,
+    filters, setFilters,
+    isScanning,
+    scanStatus,
+    findings,
+    progress,
+    error, setError,
+    startScan,
+    cancelScan,
+  } = useNucleiScan();
 
-  // Placeholder states
-  const [scanTarget, setScanTarget] = React.useState("");
-  const [scanMode, setScanMode] = React.useState("quick"); // "quick" | "advanced"
-  const [filters, setFilters] = React.useState({
-    severity: "",
-    category: "",
-    template: "",
-  });
-  const [isScanning, setIsScanning] = React.useState(false);
-  const [findings, setFindings] = React.useState([]);
-  const [scanStatus, setScanStatus] = React.useState("idle"); // "idle" | "scanning" | "finished"
-  const [error, setError] = React.useState("");
-  // Table filter
+  // Local (UI-only) state for table filtering/sorting
   const [tableFilter, setTableFilter] = React.useState("");
   const [sortBy, setSortBy] = React.useState("severity");
   const [sortDir, setSortDir] = React.useState("desc");
@@ -55,24 +55,18 @@ export default function VulnScanner({}) {
     "misc/jwt-none-bypass.yaml",
   ];
 
-  // === Scan Actions (stub) ===
+  // === Scan Actions ===
   function handleStartScan() {
-    setIsScanning(true);
-    setScanStatus("scanning");
-    setError("");
-    // TODO: IPC trigger here
-    setTimeout(() => {
-      setFindings(SAMPLE_FINDINGS.slice(0, scanMode === "quick" ? 3 : 5));
-      setScanStatus("finished");
-      setIsScanning(false);
-    }, 1700);
+    startScan({
+      target: scanTarget,
+      mode: scanMode,
+      severities: filters.severity ? [filters.severity] : undefined,
+      categories: filters.category ? [filters.category] : undefined,
+      templates: filters.template ? [filters.template] : undefined,
+    });
   }
   function handleCancel() {
-    setIsScanning(false);
-    setScanStatus("idle");
-    setError("");
-    setFindings([]);
-    // TODO: IPC cancel here
+    cancelScan();
   }
   function handleModeChange(mode) {
     setScanMode(mode);
