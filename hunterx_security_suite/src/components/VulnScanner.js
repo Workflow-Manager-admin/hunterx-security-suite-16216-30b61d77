@@ -339,7 +339,10 @@ function Tooltip({ tip, children }) {
   );
 }
 
-// PUBLIC_INTERFACE
+/**
+ * PUBLIC_INTERFACE
+ * VulnScanner panel supporting template status, error banners, update button, and auto-retry logic.
+ */
 export default function VulnScanner({}) {
   // ==== State ====
   const {
@@ -353,6 +356,18 @@ export default function VulnScanner({}) {
     error, setError,
     startScan,
     cancelScan,
+    // Template status and handlers (new additions)
+    nucleiTemplateStatus,
+    nucleiTemplateStatusLoading,
+    nucleiTemplateEvent,
+    classifyTemplateStatus,
+    refreshTemplateStatus,
+    updateTemplates,
+    nucleiTemplateUpdatePending,
+    nucleiTemplateManualError,
+    autoRetryFlag,
+    triggerAutoRetry,
+    lastFailedScanParamsRef,
   } = useNucleiScan();
 
   // Table UI state
@@ -361,6 +376,53 @@ export default function VulnScanner({}) {
   const [sortDir, setSortDir] = useState("desc");
   const [selection, setSelection] = useState({}); // id => boolean row selected
   const [showPoCIdx, setShowPoCIdx] = useState(null);
+
+  // Template status logic
+  const tplClassifier = classifyTemplateStatus(nucleiTemplateStatus);
+  const isTplHealthy = tplClassifier.status === "ok";
+  const tplStatusColor =
+    tplClassifier.severity === "success"
+      ? "#45e098"
+      : tplClassifier.severity === "warning"
+      ? "#ffa200"
+      : "#f24c6c";
+  const tplStatusLabel =
+    tplClassifier.status === "ok"
+      ? "Templates Ready"
+      : tplClassifier.status === "outdated"
+      ? "Templates Outdated"
+      : tplClassifier.status === "error"
+      ? "Template Error"
+      : tplClassifier.status === "missing"
+      ? "Templates Missing"
+      : "Unknown";
+
+  // Control scan enable/disable
+  const isScanDisabled =
+    !isTplHealthy ||
+    nucleiTemplateStatusLoading ||
+    nucleiTemplateUpdatePending ||
+    !scanTarget ||
+    isScanning;
+
+  // Auto-retry logic: For UI, we want to display that a scan will be retried after successful update
+  const isTemplateScanBlock =
+    !isTplHealthy &&
+    (tplClassifier.status === "missing" ||
+      tplClassifier.status === "error" ||
+      tplClassifier.status === "outdated");
+
+  // Manual update/refresh button label
+  const updateBtnLabel = nucleiTemplateUpdatePending
+    ? "Updating Templates..."
+    : "Update Templates";
+
+  // On click, if the last scan failed with template error, set flag to auto-retry after update
+  const onManualUpdate = () => {
+    // If last template-caused scan error, set auto-retry
+    if (lastFailedScanParamsRef && lastFailedScanParamsRef.current) triggerAutoRetry();
+    updateTemplates();
+  };
 
   // Handle row selection for export
   function toggleSelectRow(id) {
@@ -371,7 +433,9 @@ export default function VulnScanner({}) {
   }
   function selectAllRows(rows) {
     const sel = {};
-    rows.forEach(f => { if (f.id || f.key) sel[f.id || f.key] = true; });
+    rows.forEach(f => {
+      if (f.id || f.key) sel[f.id || f.key] = true;
+    });
     setSelection(sel);
   }
   function clearSelection() {
@@ -483,6 +547,163 @@ export default function VulnScanner({}) {
     else if (fmt === "report") handleExportReport(expRows);
   }
 
+  // Template status indicator (inline, like health badge, and panel)
+  function renderTemplateStatusBadge() {
+    return (
+      <span
+        style={{
+          background: tplStatusColor,
+          color: "#1a1a2e",
+          fontWeight: 700,
+          borderRadius: 8,
+          fontSize: "1.04em",
+          padding: "2.5px 16px",
+          marginLeft: 17,
+          opacity: nucleiTemplateStatusLoading ? 0.6 : 1,
+          letterSpacing: "0.04em",
+        }}
+        title={`Status: ${tplStatusLabel}`}
+        tabIndex={0}
+      >
+        {tplStatusLabel}
+      </span>
+    );
+  }
+
+  // Error/warning banner panel for template health
+  function renderTemplateErrorBanner() {
+    if (!isTemplateScanBlock) return null;
+
+    let bannerColor = "#faeaea";
+    let textColor = "#C02020";
+    let icon = "❌";
+    let description = tplClassifier.reason || "Nuclei templates are missing or unusable. Please update or repair templates.";
+
+    if (tplClassifier.severity === "warning") {
+      bannerColor = "#fffbe8";
+      textColor = "#bb7923";
+      icon = "⚠️";
+    }
+    if (tplClassifier.severity === "success") return null;
+
+    // Remediation instructions
+    let remediation = (
+      <span>
+        {tplClassifier.status === "outdated"
+          ? "You should update templates to ensure latest coverage. "
+          : "Templates must be installed and up to date for scanner to run. "}
+        Use <b>Update Templates</b> below or check your system's template folder.
+      </span>
+    );
+    if (nucleiTemplateManualError) {
+      description = nucleiTemplateManualError;
+      icon = "❗";
+      bannerColor = "#fee6f0";
+      textColor = "#be2a60";
+    }
+
+    return (
+      <div
+        role="alert"
+        style={{
+          background: bannerColor,
+          color: textColor,
+          padding: "13px 23px",
+          border: `2.2px solid ${tplStatusColor}`,
+          borderRadius: 8,
+          fontWeight: 600,
+          marginBottom: 16,
+          fontSize: "1.09em",
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 14,
+          position: "relative",
+        }}
+        tabIndex={0}
+      >
+        <span style={{ fontSize: "1.5em", lineHeight: 1 }}>{icon}</span>
+        <div>
+          <b>Templates Not Usable:</b> {description}
+          <br />
+          <span style={{ fontWeight: 500 }}>{remediation}</span>
+          {/* Update/Refresh Button in banner */}
+          <div style={{ marginTop: 7 }}>
+            <button
+              type="button"
+              className="hx-recon-btn"
+              style={{
+                color: "#fff",
+                background: tplStatusColor,
+                border: 0,
+                borderRadius: 6,
+                padding: "8px 20px",
+                marginRight: 10,
+                fontWeight: 700,
+                fontSize: "1.08em",
+                opacity: nucleiTemplateUpdatePending ? 0.6 : 1,
+                cursor: nucleiTemplateUpdatePending ? "wait" : "pointer",
+              }}
+              disabled={nucleiTemplateUpdatePending}
+              onClick={onManualUpdate}
+              tabIndex={0}
+            >
+              {updateBtnLabel}
+            </button>
+            <button
+              type="button"
+              className="hx-recon-btn"
+              style={{
+                color: "#666",
+                background: "#eee",
+                border: "1.3px solid #aaa",
+                borderRadius: 6,
+                padding: "7px 15px",
+                fontWeight: 600,
+                fontSize: "1.01em",
+                marginLeft: 2,
+                opacity: nucleiTemplateStatusLoading ? 0.4 : 1,
+                cursor: nucleiTemplateStatusLoading ? "not-allowed" : "pointer",
+              }}
+              disabled={nucleiTemplateStatusLoading}
+              onClick={refreshTemplateStatus}
+              tabIndex={0}
+            >
+              Refresh Status
+            </button>
+          </div>
+        </div>
+        {nucleiTemplateUpdatePending && (
+          <span
+            style={{
+              marginLeft: "auto",
+              position: "absolute",
+              right: 19,
+              top: 6,
+              fontWeight: "bold",
+              color: "#8494a1",
+              fontSize: "0.98em",
+              opacity: 0.82,
+            }}
+          >
+            <span className="hx-recon-spinner" style={{
+              display: "inline-block",
+              marginRight: 10,
+              width: 18, height: 18,
+              border: "3px solid #ddd",
+              borderTop: `3px solid ${tplStatusColor}`,
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite"
+            }} />
+            Updating...
+            <style>
+              {'@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}'}
+            </style>
+          </span>
+        )}
+      </div>
+    );
+  }
+
   return (
     <section className="hx-module-panel hx-vuln-panel" data-module="scanner">
       <h2 style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -490,11 +711,14 @@ export default function VulnScanner({}) {
           ⚡
         </span>
         Vulnerability Scanner
+        {renderTemplateStatusBadge()}
       </h2>
       <p style={{ color: "#d7dfff", marginBottom: 8, fontSize: "1.09em" }}>
         Automated Nuclei scan UI: scan endpoints, filter by template/category, and review findings.{" "}
         <span style={{ color: "var(--accent)", fontWeight: 500 }}>Burp Suite-inspired workflow</span>.
       </p>
+      {/* Template Error/Health Banner */}
+      {renderTemplateErrorBanner()}
 
       {/* Scan Target + quick/advanced switching */}
       <div
