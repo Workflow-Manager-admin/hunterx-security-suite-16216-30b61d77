@@ -262,44 +262,103 @@ export default function ReconDashboard() {
         {/* Graph area */}
         <div className="hx-recon-graph-placeholder">
           <div className="hx-recon-graph-title">Live Results Visualization</div>
-          <div className="hx-recon-graph-box">
-            {/* For now, just show counts or sample data from results */}
-            {currentResults.length === 0 && (
-              <span style={{ opacity: 0.35 }}>Graph/Map coming soon</span>
-            )}
-            {currentResults.length > 0 && (
-              <span style={{ color: "#ffeeb0" }}>{currentResults.length} results</span>
-            )}
+          <div className="hx-recon-graph-box" style={{overflow: "auto"}}>
+            {/* Graph visualization: SVG */}
+            <ReconGraph results={currentResults.slice(0, 25)} />
           </div>
         </div>
-        {/* Results table */}
+        {/* Results table + export control */}
         <div className="hx-recon-table-placeholder">
-          <div className="hx-recon-table-title">Enumeration Table</div>
+          <div className="hx-recon-table-title" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <span>Enumeration Table</span>
+            {/* Export controls: CSV/JSON */}
+            <span>
+              <button
+                type="button"
+                title="Export as CSV"
+                aria-label="Export as CSV"
+                tabIndex={0}
+                disabled={currentResults.length === 0}
+                onClick={() => exportCSV(filteredRows, reconColumns, "recon-results.csv")}
+                style={{
+                  marginRight: 8,
+                  background: "var(--accent)",
+                  color: "#fff",
+                  border: "none",
+                  padding: "6px 12px",
+                  borderRadius: 4,
+                  fontWeight: 500,
+                  fontSize: "1em",
+                  cursor: currentResults.length === 0 ? "not-allowed" : "pointer",
+                  opacity: currentResults.length === 0 ? 0.6 : 1,
+                }}
+              >CSV</button>
+              <button
+                type="button"
+                title="Export as JSON"
+                aria-label="Export as JSON"
+                tabIndex={0}
+                disabled={currentResults.length === 0}
+                onClick={() => exportJSON(filteredRows, "recon-results.json")}
+                style={{
+                  background: "var(--panel-bg)",
+                  color: "var(--accent)",
+                  border: "1.3px solid var(--accent)",
+                  padding: "6px 12px",
+                  borderRadius: 4,
+                  fontWeight: 500,
+                  fontSize: "1em",
+                  cursor: currentResults.length === 0 ? "not-allowed" : "pointer",
+                  opacity: currentResults.length === 0 ? 0.6 : 1,
+                }}
+              >JSON</button>
+            </span>
+          </div>
+          <div style={{ marginBottom: 7, maxWidth: 390 }}>
+            <TableFilter filter={tableFilter} setFilter={setTableFilter} />
+          </div>
           <table className="hx-recon-table">
             <thead>
               <tr>
-                <th>#</th>
-                <th>Asset</th>
-                <th>Type</th>
-                <th>Status</th>
-                <th>Notes</th>
+                {reconColumns.map(col => (
+                  <th
+                    key={col.field}
+                    role="columnheader"
+                    onClick={() => col.sortable && handleSort(col.field)}
+                    style={{ cursor: col.sortable ? "pointer" : "default", userSelect: "none" }}
+                    aria-sort={sortBy === col.field ? (sortDir === "asc" ? "ascending" : "descending") : undefined}
+                    tabIndex={col.sortable ? 0 : -1}
+                  >
+                    {col.label}
+                    {col.sortable &&
+                      sortBy === col.field &&
+                      (sortDir === "asc" ? " ▲" : " ▼")}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {currentResults.length === 0 ? (
+              {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: "center", opacity: 0.40 }}>
+                  <td colSpan={reconColumns.length} style={{ textAlign: "center", opacity: 0.40 }}>
                     {isScanRunning ? "Listening for results..." : "Results will appear here as targets are discovered."}
                   </td>
                 </tr>
               ) : (
-                currentResults.map((row, idx) => (
-                  <tr key={idx}>
+                filteredRows.map((row, idx) => (
+                  <tr key={row.id || String(row.asset || row.domain || row.ip || idx)}>
                     <td>{idx + 1}</td>
-                    <td>{row.asset || row.domain || row.ip || "—"}</td>
-                    <td>{row.type || row.assetType || row.service || "—"}</td>
-                    <td>{row.status || (row.open !== undefined ? (row.open ? "Open" : "Closed") : "—")}</td>
-                    <td>{row.notes || row.info || ""}</td>
+                    <td style={{ fontFamily: "monospace", color: "#ffeeb0" }}>{row.asset || row.domain || row.ip || "—"}</td>
+                    <td style={{ color: "#42fad3" }}>{row.type || row.assetType || row.service || "—"}</td>
+                    <td>
+                      {row.status ||
+                        (row.open !== undefined
+                          ? row.open
+                            ? <span style={{color:"#38da7c"}}>Open</span>
+                            : <span style={{color:"#e94560"}}>Closed</span>
+                          : "—")}
+                    </td>
+                    <td style={{ fontSize: "0.96em", color: "#d8d9e5" }}>{row.notes || row.info || ""}</td>
                   </tr>
                 ))
               )}
@@ -308,9 +367,134 @@ export default function ReconDashboard() {
         </div>
       </div>
       {/* Guidance */}
-      <div className="hx-recon-tip">
+      <div className="hx-recon-tip" tabIndex={0}>
         Tip: Enter a domain/IP and choose a scan type to begin recon. Full recon combines subdomain and port scans automatically.
       </div>
     </section>
   );
 }
+
+// --- Local helpers and UI: Table, Graph, Export, Filter ---
+import ReconGraph from "./ReconGraph";
+import { exportCSV, exportJSON } from "./ExportUtils";
+import React, { useMemo, useState } from "react";
+
+// Table columns: customizable, sortable
+const reconColumns = [
+  { label: "#", field: "__num", sortable: false },
+  { label: "Asset", field: "asset_display", sortable: true },
+  { label: "Type", field: "assetType", sortable: true },
+  { label: "Status", field: "status", sortable: true },
+  { label: "Notes", field: "notes", sortable: false },
+];
+
+// Local state: sorting and filtering for the table
+function TableFilter({ filter, setFilter }) {
+  return (
+    <input
+      type="search"
+      className="hx-recon-input"
+      placeholder="Quick filter…"
+      value={filter}
+      onChange={e => setFilter(e.target.value)}
+      style={{
+        minWidth: 130,
+        maxWidth: "98%",
+        padding: "6px 13px",
+        fontSize: "0.99em"
+      }}
+      aria-label="Filter table rows"
+    />
+  );
+}
+export {
+  TableFilter
+};
+
+// Compose augmented rows for table processing and search; keep original source properties
+function processTableRows(rows) {
+  return rows.map((row, idx) => ({
+    ...row,
+    __num: idx + 1,
+    asset_display: row.asset || row.domain || row.ip || "—"
+  }));
+}
+
+// Extend main React component to use sorting/filtering state
+// Wrap the default export, preserving props/signature
+
+// Wrap the exported component
+const BaseReconDashboard = ReconDashboard;
+function ReconDashboardEnhanced(props) {
+  const {
+    results,
+    isLoading,
+    startScan,
+    cancelScan,
+    ...rest
+  } = useRecon();
+
+  // Table sort/filter states
+  const [sortBy, setSortBy] = useState("asset_display");
+  const [sortDir, setSortDir] = useState("asc");
+  const [tableFilter, setTableFilter] = useState("");
+
+  // Encode sorted+filtered view
+  const fullRows = useMemo(() => processTableRows(Array.isArray(results) ? results : []), [results]);
+  // Filter (case insensitive substring in any field)
+  const filteredRows = useMemo(() => {
+    if (!tableFilter) return fullRows;
+    const filter = tableFilter.toLowerCase();
+    return fullRows.filter(row =>
+      Object.values(row)
+        .join(" ")
+        .toLowerCase()
+        .includes(filter)
+    );
+  }, [tableFilter, fullRows]);
+  // Sort by column
+  const sortedRows = useMemo(() => {
+    if (!sortBy || sortBy === "__num") return filteredRows;
+    return [...filteredRows].sort((a, b) => {
+      if (a[sortBy] == null) return 1;
+      if (b[sortBy] == null) return -1;
+      if (typeof a[sortBy] === "string" && typeof b[sortBy] === "string") {
+        return sortDir === "asc"
+          ? a[sortBy].localeCompare(b[sortBy])
+          : b[sortBy].localeCompare(a[sortBy]);
+      }
+      return sortDir === "asc"
+        ? a[sortBy] > b[sortBy]
+          ? 1
+          : -1
+        : a[sortBy] < b[sortBy]
+        ? 1
+        : -1;
+    });
+  }, [sortBy, sortDir, filteredRows]);
+  // Export only visible (sorted/filtered) table state
+  // Extended logic for sorting columns when header clicked
+  function handleSort(field) {
+    if (sortBy === field) setSortDir(sortDir === "asc" ? "desc" : "asc");
+    else {
+      setSortBy(field);
+      setSortDir("asc");
+    }
+  }
+
+  // Provide these local table helpers and props
+  return (
+    <BaseReconDashboard
+      {...props}
+      sortedRows={sortedRows}
+      filteredRows={sortedRows}
+      tableFilter={tableFilter}
+      setTableFilter={setTableFilter}
+      sortBy={sortBy}
+      sortDir={sortDir}
+      handleSort={handleSort}
+      reconColumns={reconColumns}
+    />
+  );
+}
+export default ReconDashboardEnhanced;
