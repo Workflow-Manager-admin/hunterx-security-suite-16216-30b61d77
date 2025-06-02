@@ -2,185 +2,112 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 
-// Secure channels (avoid arbitrary code exec, validate inputs!)
-const RECON_CHANNELS = {
-  START_SCAN: 'recon:start_scan',
-  SCAN_PROGRESS: 'recon:scan_progress',
-  SCAN_RESULT: 'recon:scan_result'
-};
+const isDev = !app.isPackaged;
 
 let mainWindow;
+let activeScans = {}; // Track running scan processes
 
-function createMainWindow() {
+function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1240,
-    height: 720,
-    backgroundColor: "#1a1a2e",
+    width: 1150,
+    height: 770,
     webPreferences: {
-      preload: path.join(__dirname, '../src/ipc/recon.js'),
+      // Enable contextIsolation and preload for secure IPC
       contextIsolation: true,
-      nodeIntegration: false, // Do not allow Node.js in renderer
-      enableRemoteModule: false,
-      sandbox: true,
+      nodeIntegration: false,
+      preload: path.join(__dirname, '../src/ipc/recon.js')
     }
   });
 
-  // Serve built React or in dev mode, load localhost
-  if (app.isPackaged) {
-    mainWindow.loadFile(path.join(__dirname, '../build/index.html'));
-  } else {
+  if (isDev) {
     mainWindow.loadURL('http://localhost:3000');
+    mainWindow.webContents.openDevTools({mode: "detach"});
+  } else {
+    mainWindow.loadFile(path.join(__dirname, '../build/index.html'));
   }
 }
 
-app.on('ready', createMainWindow);
+// Validate and sanitize params (domain or IP)
+function isValidTarget(target) {
+  // Simple validation for domain or IPv4 (expand as needed)
+  return (
+    typeof target === 'string' &&
+    (/^([a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})$/.test(target) || /^(?:\d{1,3}\.){3}\d{1,3}$/.test(target))
+  );
+}
+
+// Helper function to spawn a safe scan command
+function spawnScanTool(tool, args, channelPrefix, scanId) {
+  try {
+    const proc = spawn(tool, args, { shell: false });
+
+    // Track for cleanup/cancel
+    activeScans[scanId] = proc;
+
+    proc.stdout.on('data', (data) => {
+      mainWindow.webContents.send(`${channelPrefix}:scan_progress`, { output: data.toString(), scanId });
+    });
+    proc.stderr.on('data', (data) => {
+      mainWindow.webContents.send(`${channelPrefix}:scan_progress`, { output: data.toString(), scanId, isError: true });
+    });
+    proc.on('close', (code) => {
+      mainWindow.webContents.send(`${channelPrefix}:scan_result`, { done: true, code, scanId });
+      delete activeScans[scanId];
+    });
+    proc.on('error', (err) => {
+      mainWindow.webContents.send(`${channelPrefix}:scan_result`, { error: err.message, scanId });
+      delete activeScans[scanId];
+    });
+  } catch (e) {
+    mainWindow.webContents.send(`${channelPrefix}:scan_result`, { error: e.message, scanId });
+  }
+}
+
+// Listen for Amass/Masscan scan requests (secure, only minimal args allowed)
+function registerScanHandlers() {
+  // Unified handler for backward compat:
+  ipcMain.handle('recon:start_scan', async (event, params) => {
+    const { target, scanType } = params || {};
+    if (!isValidTarget(target)) {
+      return { error: 'Invalid target. Use a valid domain or IPv4.' };
+    }
+    let scanId = `${scanType || 'scan'}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    if (scanType === 'subdomains' || scanType === 'full') {
+      // Amass command (strongly restrict/validate params!)
+      // Only allow one arg: domain
+      const amassArgs = ['enum', '-d', target, '-o', '-', '-noalts'];
+      spawnScanTool('amass', amassArgs, 'recon', scanId + '-amass');
+    }
+    if (scanType === 'ports' || scanType === 'full') {
+      // Masscan: restrict to top 1000 ports for safety
+      // Masscan requires root, use restricted ports unless configured otherwise
+      const masscanArgs = ['-p1-1000', target, '--rate', '3000', '-oL', '-'];
+      spawnScanTool('masscan', masscanArgs, 'recon', scanId + '-masscan');
+    }
+    return { status: 'started', scanId };
+  });
+
+  // Cancel scan handler (optional, cleanup child processes)
+  ipcMain.handle('recon:cancel_scan', async (event, { scanId }) => {
+    const proc = activeScans[scanId];
+    if (proc) {
+      proc.kill('SIGTERM');
+      delete activeScans[scanId];
+      return { cancelled: true };
+    }
+    return { error: 'No such scan running.' };
+  });
+}
+
+// Application lifecycle
+app.on('ready', () => {
+  createWindow();
+  registerScanHandlers();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
-
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
-});
-
-/**
- * Validate target as domain or IPv4 address (simple regex, not exhaustive)
- */
-function isValidTarget(target) {
-  const domainOrIp = /^([a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|(\d{1,3}\.){3}\d{1,3})$/;
-  return typeof target === 'string' && domainOrIp.test(target);
-}
-
-/**
- * Parse Amass ("normal" mode, text output) lines into result objects.
- */
-function parseAmassLine(line) {
-  // Amass returns discovered subdomains, e.g. "www.sub.example.com"
-  const trimmed = line.trim();
-  if (trimmed && trimmed[0] !== '[') { // skip logs like "[INF]..."
-    return {
-      asset: trimmed,
-      type: "subdomain",
-      status: "found"
-    };
-  }
-  return null;
-}
-
-/**
- * Parse Masscan line (assuming default -oL output, suppress banners).
- */
-function parseMasscanLine(line) {
-  // Example: "open tcp 80 1.2.3.4"
-  const match = line.match(/open\s+(\w+)\s+(\d+)\s+([\d.]+)/);
-  if (match) {
-    return {
-      asset: match[3],
-      port: +match[2],
-      proto: match[1],
-      type: "port",
-      status: "open"
-    };
-  }
-  return null;
-}
-
-/**
- * Spawn Amass as subdomain scanner.
- */
-function runAmass(target, sendProgress, sendResult, scanType = 'subdomains') {
-  // Safe args: only allow validated target, no user-controlled flags
-  const args = ['enum', '-d', target, '-o', '-'];
-  const amass = spawn('amass', args);
-
-  amass.stdout.on('data', data => {
-    const lines = String(data).split('\n');
-    for (const line of lines) {
-      const res = parseAmassLine(line);
-      if (res) sendResult(res);
-    }
-  });
-
-  amass.stderr.on('data', data => {
-    sendProgress({ tool: 'amass', msg: String(data).trim() });
-  });
-
-  amass.on('close', code => {
-    sendProgress({ tool: 'amass', done: true, exitCode: code });
-  });
-}
-
-/**
- * Spawn Masscan as port scanner.
- */
-function runMasscan(target, sendProgress, sendResult, scanType = 'ports') {
-  // Safe args: scan top 1000 ports, treat target as IP/range (validate first!)
-  const ports = '1-1000';
-  // -oL - output list format, parsable; -Pn - no ping, -p <ports>
-  const args = ['-p', ports, '--rate', '500', target, '-oL', '-'];
-  const masscan = spawn('masscan', args);
-
-  masscan.stdout.on('data', data => {
-    const lines = String(data).split('\n');
-    for (const line of lines) {
-      const res = parseMasscanLine(line);
-      if (res) sendResult(res);
-    }
-  });
-
-  masscan.stderr.on('data', data => {
-    sendProgress({ tool: 'masscan', msg: String(data).trim() });
-  });
-
-  masscan.on('close', code => {
-    sendProgress({ tool: 'masscan', done: true, exitCode: code });
-  });
-}
-
-// ---- IPC/Electron Secure Handler ----
-ipcMain.handle(RECON_CHANNELS.START_SCAN, async (event, { target, scanType }) => {
-  // Validate
-  if (!isValidTarget(target) || !['subdomains', 'ports', 'full'].includes(scanType)) {
-    return { error: 'Invalid scan parameters' };
-  }
-
-  // Use event.sender to reply progressively
-  const sender = event.sender;
-
-  // Progress and result streaming helpers
-  const sendProgress = (obj) => {
-    sender.send(RECON_CHANNELS.SCAN_PROGRESS, obj);
-  };
-  const sendResult = (obj) => {
-    sender.send(RECON_CHANNELS.SCAN_RESULT, obj);
-  };
-
-  // Dispatch scan(s)
-  if (scanType === 'subdomains') {
-    runAmass(target, sendProgress, sendResult, scanType);
-  } else if (scanType === 'ports') {
-    runMasscan(target, sendProgress, sendResult, scanType);
-  } else if (scanType === 'full') {
-    // Run Amass first, then port scan for each subdomain/IP found
-    let discovered = [];
-    runAmass(
-      target,
-      sendProgress,
-      (res) => {
-        sendResult(res);
-        // If domain => run ports on it
-        if (res.asset && !discovered.includes(res.asset)) {
-          discovered.push(res.asset);
-          runMasscan(
-            res.asset,
-            prog => sendProgress({...prog, asset: res.asset }),
-            portRes => sendResult({...portRes, parent: res.asset }),
-            'ports'
-          );
-        }
-      },
-      scanType
-    );
-  }
-  return { ok: true, started: scanType };
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
